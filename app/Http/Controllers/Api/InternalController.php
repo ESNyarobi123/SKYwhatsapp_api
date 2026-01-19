@@ -54,6 +54,22 @@ class InternalController extends Controller
         ]);
     }
 
+06    /**
+     * Clear QR code for an instance.
+     */
+    public function clearQrCode(Instance $instance): JsonResponse
+    {
+        $instance->update([
+            'qr_code' => null,
+            'qr_expires_at' => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'QR code cleared successfully.',
+        ]);
+    }
+
     /**
      * Update instance status.
      */
@@ -177,6 +193,39 @@ class InternalController extends Controller
     }
 
     /**
+     * Update message status.
+     */
+    public function updateMessageStatus(Request $request, Message $message): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:sent,delivered,read,failed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'VALIDATION_ERROR',
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors(),
+                ],
+            ], 422);
+        }
+
+        $message->update([
+            'status' => $request->status,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'message' => $message->fresh(),
+            ],
+            'message' => 'Message status updated successfully.',
+        ]);
+    }
+
+    /**
      * Get all instances (for polling status changes).
      */
     public function getAllInstances(Request $request): JsonResponse
@@ -239,15 +288,23 @@ class InternalController extends Controller
 
     /**
      * Get instance details for connection.
+     * Allows access for connecting, disconnected (with session), or connected instances.
      */
     public function getInstanceForConnection(Instance $instance): JsonResponse
     {
-        if ($instance->status !== 'connecting') {
+        // Allow access if:
+        // 1. Status is 'connecting' (normal case)
+        // 2. Status is 'disconnected' but has session_data (reconnection case)
+        // 3. Status is 'connected' (checking connection state)
+        $allowedStatuses = ['connecting', 'connected'];
+        $hasSession = !empty($instance->session_data);
+        
+        if (!in_array($instance->status, $allowedStatuses) && !$hasSession) {
             return response()->json([
                 'success' => false,
                 'error' => [
-                    'code' => 'INSTANCE_NOT_CONNECTING',
-                    'message' => 'Instance is not in connecting state.',
+                    'code' => 'INSTANCE_NOT_AVAILABLE',
+                    'message' => 'Instance is not available for connection.',
                 ],
             ], 400);
         }

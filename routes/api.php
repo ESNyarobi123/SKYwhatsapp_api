@@ -94,10 +94,12 @@ Route::prefix('internal')->middleware([\App\Http\Middleware\AuthenticateInternal
     Route::get('/instances/pending', [InternalController::class, 'getPendingConnections'])->name('api.internal.instances.pending');
     Route::get('/instances/{instance}/connect', [InternalController::class, 'getInstanceForConnection'])->name('api.internal.instances.connect');
     Route::post('/instances/{instance}/qr', [InternalController::class, 'storeQrCode'])->name('api.internal.instances.qr');
+    Route::delete('/instances/{instance}/qr', [InternalController::class, 'clearQrCode'])->name('api.internal.instances.qr.clear');
     Route::post('/instances/{instance}/status', [InternalController::class, 'updateStatus'])->name('api.internal.instances.status');
     Route::post('/instances/{instance}/session', [InternalController::class, 'storeSession'])->name('api.internal.instances.session');
     
     // Message management
     Route::get('/messages/pending', [InternalController::class, 'getPendingMessages'])->name('api.internal.messages.pending');
     Route::post('/messages', [InternalController::class, 'storeMessage'])->name('api.internal.messages.store');
+    Route::post('/messages/{message}/status', [InternalController::class, 'updateMessageStatus'])->name('api.internal.messages.status');
 });
