@@ -288,19 +288,49 @@ function groupMessagesByContact(messages) {
     return Array.from(contactsMap.values());
 }
 
-// Load messages list (left pane) - grouped by contact (no duplicates)
-function loadMessages() {
+// Auto-refresh interval for new messages
+let messagesRefreshInterval = null;
+const MESSAGES_REFRESH_INTERVAL_MS = 3000; // Check every 3 seconds for new messages
+
+// Start auto-refresh for messages
+function startMessagesAutoRefresh() {
+    // Clear existing interval if any
+    if (messagesRefreshInterval) {
+        clearInterval(messagesRefreshInterval);
+    }
+    
+    // Start polling for new messages
+    messagesRefreshInterval = setInterval(() => {
+        // Only refresh if page is visible (not hidden in background tab)
+        if (!document.hidden) {
+            loadMessages(true); // silent = true (don't show loading spinner)
+        }
+    }, MESSAGES_REFRESH_INTERVAL_MS);
+}
+
+// Stop auto-refresh for messages
+function stopMessagesAutoRefresh() {
+    if (messagesRefreshInterval) {
+        clearInterval(messagesRefreshInterval);
+        messagesRefreshInterval = null;
+    }
+}
+
+// Load messages list (left pane) - individual messages (numbers can repeat)
+function loadMessages(silent = false) {
     const messagesList = document.getElementById('messagesList');
     
-    // Show loading state
-    messagesList.innerHTML = `
-        <div class="flex items-center justify-center py-12">
-            <div class="text-center">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FCD535] mx-auto mb-3"></div>
-                <p class="text-white/70 text-sm">Loading conversations...</p>
+    // Only show loading state if not silent
+    if (!silent) {
+        messagesList.innerHTML = `
+            <div class="flex items-center justify-center py-12">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FCD535] mx-auto mb-3"></div>
+                    <p class="text-white/70 text-sm">Loading conversations...</p>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    }
     
     const instanceId = document.getElementById('filterInstance')?.value || '';
     const searchTerm = document.getElementById('messageSearch')?.value.toLowerCase() || '';
@@ -325,10 +355,17 @@ function loadMessages() {
             const messages = data.data?.messages || [];
             
             // Filter out group messages
-            allMessages = messages.filter(msg => {
+            const newAllMessages = messages.filter(msg => {
                 const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
                 return !isGroupJID(contactJID);
             });
+            
+            // Check if we have new messages (compare IDs)
+            const oldMessageIds = new Set(allMessages.map(m => m.id));
+            const hasNewMessages = newAllMessages.some(msg => !oldMessageIds.has(msg.id));
+            
+            // Update allMessages
+            allMessages = newAllMessages;
             
             // Filter by search term
             filteredMessages = allMessages.filter(msg => {
@@ -346,40 +383,50 @@ function loadMessages() {
             // Sort by created_at (newest first)
             filteredMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             
+            // Re-render messages list
             renderMessagesList();
+            
+            // If we have new messages and chat is open, refresh chat too
+            if (hasNewMessages && currentChatPhone && currentChatInstanceId) {
+                loadChatMessages(currentChatPhone, currentChatInstanceId, true); // silent = true
+            }
         } else {
+            if (!silent) {
+                messagesList.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-16 px-4">
+                        <div class="w-20 h-20 rounded-full bg-yellow-500/10 flex items-center justify-center mb-4">
+                            <svg class="w-10 h-10 text-yellow-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-white font-semibold text-lg mb-2">No conversations found</h3>
+                        <p class="text-white/60 text-sm text-center mb-4">${data.error?.message || 'Start chatting by sending or receiving a message'}</p>
+                        <button onclick="loadMessages()" class="px-4 py-2 bg-[#FCD535] hover:bg-[#F0C420] text-black rounded-lg text-sm font-medium transition-colors">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error loading messages:', error);
+        if (!silent) {
             messagesList.innerHTML = `
                 <div class="flex flex-col items-center justify-center py-16 px-4">
-                    <div class="w-20 h-20 rounded-full bg-yellow-500/10 flex items-center justify-center mb-4">
-                        <svg class="w-10 h-10 text-yellow-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <div class="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                        <svg class="w-10 h-10 text-red-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <h3 class="text-white font-semibold text-lg mb-2">No conversations found</h3>
-                    <p class="text-white/60 text-sm text-center mb-4">${data.error?.message || 'Start chatting by sending or receiving a message'}</p>
+                    <h3 class="text-white font-semibold text-lg mb-2">Error loading messages</h3>
+                    <p class="text-white/60 text-sm text-center mb-4">${error.message || 'Failed to load messages. Please check your connection and try again.'}</p>
                     <button onclick="loadMessages()" class="px-4 py-2 bg-[#FCD535] hover:bg-[#F0C420] text-black rounded-lg text-sm font-medium transition-colors">
                         Retry
                     </button>
                 </div>
             `;
         }
-    })
-    .catch(error => {
-        console.error('Error loading messages:', error);
-        messagesList.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-16 px-4">
-                <div class="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                    <svg class="w-10 h-10 text-red-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <h3 class="text-white font-semibold text-lg mb-2">Error loading messages</h3>
-                <p class="text-white/60 text-sm text-center mb-4">${error.message || 'Failed to load messages. Please check your connection and try again.'}</p>
-                <button onclick="loadMessages()" class="px-4 py-2 bg-[#FCD535] hover:bg-[#F0C420] text-black rounded-lg text-sm font-medium transition-colors">
-                    Retry
-                </button>
-            </div>
-        `;
     });
 }
 
@@ -790,6 +837,34 @@ document.getElementById('chatReplyForm').addEventListener('submit', async (e) =>
     }
 });
 
+// Auto-refresh interval for new messages
+let messagesRefreshInterval = null;
+const MESSAGES_REFRESH_INTERVAL_MS = 3000; // Check every 3 seconds for new messages
+
+// Start auto-refresh for messages
+function startMessagesAutoRefresh() {
+    // Clear existing interval if any
+    if (messagesRefreshInterval) {
+        clearInterval(messagesRefreshInterval);
+    }
+    
+    // Start polling for new messages
+    messagesRefreshInterval = setInterval(() => {
+        // Only refresh if page is visible (not hidden in background tab)
+        if (!document.hidden) {
+            loadMessages(true); // silent = true (don't show loading spinner)
+        }
+    }, MESSAGES_REFRESH_INTERVAL_MS);
+}
+
+// Stop auto-refresh for messages
+function stopMessagesAutoRefresh() {
+    if (messagesRefreshInterval) {
+        clearInterval(messagesRefreshInterval);
+        messagesRefreshInterval = null;
+    }
+}
+
 // Search messages
 document.getElementById('messageSearch')?.addEventListener('input', (e) => {
     loadMessages();
@@ -800,9 +875,25 @@ document.getElementById('filterInstance')?.addEventListener('change', () => {
     loadMessages();
 });
 
-// Load messages on page load
+// Handle page visibility change (pause polling when page is hidden)
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        stopMessagesAutoRefresh();
+    } else {
+        startMessagesAutoRefresh();
+        loadMessages(true); // Silent refresh when page becomes visible
+    }
+});
+
+// Load messages on page load and start auto-refresh
 document.addEventListener('DOMContentLoaded', () => {
     loadMessages();
+    startMessagesAutoRefresh();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    stopMessagesAutoRefresh();
 });
 
 </script>
