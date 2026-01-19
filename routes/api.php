@@ -97,5 +97,6 @@ Route::prefix('internal')->middleware([\App\Http\Middleware\AuthenticateInternal
     Route::post('/instances/{instance}/session', [InternalController::class, 'storeSession'])->name('api.internal.instances.session');
     
     // Message management
+    Route::get('/messages/pending', [InternalController::class, 'getPendingMessages'])->name('api.internal.messages.pending');
     Route::post('/messages', [InternalController::class, 'storeMessage'])->name('api.internal.messages.store');
 });

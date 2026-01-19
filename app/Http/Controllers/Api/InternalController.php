@@ -218,4 +218,27 @@ class InternalController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get pending messages (outbound messages with status 'sent' that need to be processed).
+     */
+    public function getPendingMessages(Request $request): JsonResponse
+    {
+        $messages = Message::where('direction', 'outbound')
+            ->where('status', 'sent')
+            ->whereHas('instance', function ($query) {
+                $query->where('status', 'connected');
+            })
+            ->with(['instance', 'user'])
+            ->orderBy('created_at', 'asc')
+            ->limit(100)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'messages' => $messages,
+            ],
+        ]);
+    }
 }
