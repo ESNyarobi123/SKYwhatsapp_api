@@ -53,8 +53,7 @@ class InternalController extends Controller
             'message' => 'QR code stored successfully.',
         ]);
     }
-
-06    /**
+/**
      * Clear QR code for an instance.
      */
     public function clearQrCode(Instance $instance): JsonResponse
