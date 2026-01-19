@@ -147,6 +147,7 @@ let chatImageFile = null;
 let allMessages = [];
 let filteredMessages = [];
 let selectedMessage = null;
+let selectedContact = null;
 
 // Check if JID is a group
 function isGroupJID(jid) {
