@@ -929,34 +929,6 @@ document.getElementById('chatReplyForm').addEventListener('submit', async (e) =>
     }
 });
 
-// Auto-refresh interval for new messages
-let messagesRefreshInterval = null;
-const MESSAGES_REFRESH_INTERVAL_MS = 3000; // Check every 3 seconds for new messages
-
-// Start auto-refresh for messages
-function startMessagesAutoRefresh() {
-    // Clear existing interval if any
-    if (messagesRefreshInterval) {
-        clearInterval(messagesRefreshInterval);
-    }
-    
-    // Start polling for new messages
-    messagesRefreshInterval = setInterval(() => {
-        // Only refresh if page is visible (not hidden in background tab)
-        if (!document.hidden) {
-            loadMessages(true); // silent = true (don't show loading spinner)
-        }
-    }, MESSAGES_REFRESH_INTERVAL_MS);
-}
-
-// Stop auto-refresh for messages
-function stopMessagesAutoRefresh() {
-    if (messagesRefreshInterval) {
-        clearInterval(messagesRefreshInterval);
-        messagesRefreshInterval = null;
-    }
-}
-
 // Search messages
 document.getElementById('messageSearch')?.addEventListener('input', (e) => {
     loadMessages();
