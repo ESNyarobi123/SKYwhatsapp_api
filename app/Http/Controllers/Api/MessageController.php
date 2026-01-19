@@ -113,7 +113,13 @@ class MessageController extends Controller
      */
     public function index(Request $request)
     {
-        $query = $request->user()->messages()->with('instance')->latest();
+        $user = $request->user();
+        
+        // Debug: Check total messages for user
+        $totalMessages = $user->messages()->count();
+        \Log::info('Total messages for user '.$user->id.': '.$totalMessages);
+        
+        $query = $user->messages()->with('instance')->latest();
 
         if ($request->has('instance_id')) {
             $query->where('instance_id', $request->instance_id);
@@ -122,6 +128,10 @@ class MessageController extends Controller
         if ($request->has('direction')) {
             $query->where('direction', $request->direction);
         }
+
+        // Count before filtering groups
+        $beforeFilterCount = $query->count();
+        \Log::info('Messages before group filter: '.$beforeFilterCount);
 
         // Filter out group messages - only show private messages
         // Groups have @g.us or @lid in the JID
@@ -136,8 +146,14 @@ class MessageController extends Controller
             });
         });
 
+        // Count after filtering groups
+        $afterFilterCount = $query->count();
+        \Log::info('Messages after group filter: '.$afterFilterCount);
+
         $messages = $query->paginate($request->get('per_page', 50));
-        $instances = $request->user()->instances()->get();
+        $instances = $user->instances()->get();
+        
+        \Log::info('Final messages count: '.$messages->total());
 
         if ($request->expectsJson()) {
             return response()->json([

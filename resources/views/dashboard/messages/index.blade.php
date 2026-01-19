@@ -354,9 +354,11 @@ function loadMessages(silent = false) {
     })
     .then(data => {
         console.log('Messages API response data:', data);
+        console.log('API Response full:', JSON.stringify(data, null, 2));
         if (data.success) {
             const messages = data.data?.messages || [];
             console.log('Total messages received from API:', messages.length);
+            console.log('Pagination info:', data.data?.pagination);
             
             // Filter out group messages
             const newAllMessages = messages.filter(msg => {
@@ -391,6 +393,23 @@ function loadMessages(silent = false) {
             });
             
             console.log('Filtered messages after search:', filteredMessages.length);
+            
+            // If no messages after all filtering, log details
+            if (filteredMessages.length === 0 && messages.length > 0) {
+                console.warn('All messages filtered out!');
+                console.log('Sample messages from API:', messages.slice(0, 3));
+                messages.slice(0, 3).forEach((msg, idx) => {
+                    console.log(`Message ${idx + 1}:`, {
+                        id: msg.id,
+                        direction: msg.direction,
+                        from: msg.from,
+                        to: msg.to,
+                        body: msg.body?.substring(0, 50),
+                        isGroupFrom: isGroupJID(msg.from),
+                        isGroupTo: isGroupJID(msg.to)
+                    });
+                });
+            }
             
             // Sort by created_at (newest first)
             filteredMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
