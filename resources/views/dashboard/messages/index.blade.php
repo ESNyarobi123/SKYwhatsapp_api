@@ -153,8 +153,6 @@ let allMessages = [];
 let filteredMessages = [];
 let selectedMessage = null;
 let selectedContact = null;
-let messagesPollInterval = null;
-let lastMessageCount = 0;
 
 // Check if JID is a group
 function isGroupJID(jid) {
@@ -296,20 +294,18 @@ function groupMessagesByContact(messages) {
 }
 
 // Load messages list (left pane) - grouped by contact (no duplicates)
-function loadMessages(forceRefresh = false) {
+function loadMessages() {
     const messagesList = document.getElementById('messagesList');
     
-    // Only show loading state if forced refresh or empty
-    if (forceRefresh || allMessages.length === 0) {
-        messagesList.innerHTML = `
-            <div class="flex items-center justify-center py-12">
-                <div class="text-center">
-                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FCD535] mx-auto mb-3"></div>
-                    <p class="text-white/70 text-sm">Loading conversations...</p>
-                </div>
+    // Show loading state
+    messagesList.innerHTML = `
+        <div class="flex items-center justify-center py-12">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FCD535] mx-auto mb-3"></div>
+                <p class="text-white/70 text-sm">Loading conversations...</p>
             </div>
-        `;
-    }
+        </div>
+    `;
     
     const instanceId = document.getElementById('filterInstance')?.value || '';
     const searchTerm = document.getElementById('messageSearch')?.value.toLowerCase() || '';
@@ -338,9 +334,6 @@ function loadMessages(forceRefresh = false) {
                 const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
                 return !isGroupJID(contactJID);
             });
-            
-            // Update last message count for polling
-            lastMessageCount = allMessages.length;
             
             // Group by contact (phone number + instance)
             const contacts = groupMessagesByContact(allMessages);
@@ -840,100 +833,9 @@ document.getElementById('filterInstance')?.addEventListener('change', () => {
     loadMessages();
 });
 
-// Manual refresh messages list
-function refreshMessagesList() {
-    const refreshBtn = event.target.closest('button');
-    if (refreshBtn) {
-        const icon = refreshBtn.querySelector('svg');
-        if (icon) {
-            icon.classList.add('animate-spin');
-            setTimeout(() => {
-                icon.classList.remove('animate-spin');
-            }, 1000);
-        }
-    }
-    loadMessages(true); // Force refresh
-}
-
-// Auto-refresh messages list (polling)
-function startMessagesPolling() {
-    // Stop existing polling if any
-    if (messagesPollInterval) {
-        clearInterval(messagesPollInterval);
-    }
-    
-    // Poll every 5 seconds for new messages
-    messagesPollInterval = setInterval(() => {
-        const instanceId = document.getElementById('filterInstance')?.value || '';
-        const searchTerm = document.getElementById('messageSearch')?.value.toLowerCase() || '';
-        
-        // Only poll if no search term (to avoid interrupting user search)
-        if (!searchTerm) {
-            fetch(`/api/messages?per_page=200${instanceId ? '&instance_id=' + instanceId : ''}`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const messages = data.data?.messages || [];
-                    const filtered = messages.filter(msg => {
-                        const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
-                        return !isGroupJID(contactJID);
-                    });
-                    
-                    // Only update if message count changed (new messages)
-                    if (filtered.length !== lastMessageCount) {
-                        console.log(`New messages detected: ${filtered.length} (was ${lastMessageCount})`);
-                        lastMessageCount = filtered.length;
-                        
-                        // Silent refresh - don't show loading spinner
-                        allMessages = filtered;
-                        const contacts = groupMessagesByContact(allMessages);
-                        contacts.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
-                        
-                        // Only update if user hasn't selected a contact (don't interrupt active chat)
-                        if (!selectedContact) {
-                            renderContactsList(contacts);
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Polling error:', error);
-            });
-        }
-    }, 5000); // Poll every 5 seconds
-}
-
-// Stop polling
-function stopMessagesPolling() {
-    if (messagesPollInterval) {
-        clearInterval(messagesPollInterval);
-        messagesPollInterval = null;
-    }
-}
-
 // Load messages on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadMessages();
-    
-    // Start auto-refresh polling
-    startMessagesPolling();
-});
-
-// Stop polling when page is hidden
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        stopMessagesPolling();
-    } else {
-        startMessagesPolling();
-        // Refresh immediately when page becomes visible
-        loadMessages(true);
-    }
 });
 
 </script>
