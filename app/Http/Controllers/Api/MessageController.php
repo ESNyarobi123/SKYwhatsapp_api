@@ -54,7 +54,7 @@ class MessageController extends Controller
 
             $message = 'Message limit reached for your plan.';
             if ($messageUsage && $messageUsage['limit'] !== null) {
-                $periodText = $messageUsage['period'] === 'day' ? 'today' : 'this ' . $messageUsage['period'];
+                $periodText = $messageUsage['period'] === 'day' ? 'today' : 'this '.$messageUsage['period'];
                 $message = "Message limit reached ({$messageUsage['usage']}/{$messageUsage['limit']}) for {$periodText}. Please upgrade your plan or try again later.";
             }
 
@@ -125,11 +125,15 @@ class MessageController extends Controller
 
         // Filter out group messages - only show private messages
         // Groups have @g.us or @lid in the JID
+        // Use OR logic: message should not be from a group AND should not be to a group
         $query->where(function ($q) {
-            $q->where('from', 'not like', '%@g.us')
-              ->where('from', 'not like', '%@lid')
-              ->where('to', 'not like', '%@g.us')
-              ->where('to', 'not like', '%@lid');
+            $q->where(function ($subQ) {
+                $subQ->where('from', 'not like', '%@g.us')
+                    ->where('from', 'not like', '%@lid');
+            })->where(function ($subQ) {
+                $subQ->where('to', 'not like', '%@g.us')
+                    ->where('to', 'not like', '%@lid');
+            });
         });
 
         $messages = $query->paginate($request->get('per_page', 50));

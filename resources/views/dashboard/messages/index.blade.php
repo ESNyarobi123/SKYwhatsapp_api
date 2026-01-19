@@ -343,22 +343,32 @@ function loadMessages(silent = false) {
         credentials: 'same-origin',
     })
     .then(response => {
+        console.log('Messages API response status:', response.status);
         if (!response.ok) {
             return response.json().then(err => {
+                console.error('Messages API error:', err);
                 throw new Error(err.message || 'Failed to load messages');
             });
         }
         return response.json();
     })
     .then(data => {
+        console.log('Messages API response data:', data);
         if (data.success) {
             const messages = data.data?.messages || [];
+            console.log('Total messages received from API:', messages.length);
             
             // Filter out group messages
             const newAllMessages = messages.filter(msg => {
                 const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
-                return !isGroupJID(contactJID);
+                const isGroup = isGroupJID(contactJID);
+                if (isGroup) {
+                    console.log('Filtered out group message:', contactJID);
+                }
+                return !isGroup;
             });
+            
+            console.log('Messages after filtering groups:', newAllMessages.length);
             
             // Check if we have new messages (compare IDs)
             const oldMessageIds = new Set(allMessages.map(m => m.id));
@@ -379,6 +389,8 @@ function loadMessages(silent = false) {
                        messageBody.toLowerCase().includes(searchTerm) ||
                        instanceName.toLowerCase().includes(searchTerm);
             });
+            
+            console.log('Filtered messages after search:', filteredMessages.length);
             
             // Sort by created_at (newest first)
             filteredMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));

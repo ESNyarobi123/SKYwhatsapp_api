@@ -53,7 +53,8 @@ class InternalController extends Controller
             'message' => 'QR code stored successfully.',
         ]);
     }
-/**
+
+    /**
      * Clear QR code for an instance.
      */
     public function clearQrCode(Instance $instance): JsonResponse
@@ -169,13 +170,16 @@ class InternalController extends Controller
 
         $instance = Instance::findOrFail($request->instance_id);
 
+        // Generate message_id if not provided (required field)
+        $messageId = $request->message_id ?? 'msg_'.str()->random(32);
+
         $message = Message::create([
             'user_id' => $instance->user_id,
             'instance_id' => $request->instance_id,
             'from' => $request->from,
             'to' => $request->to,
             'body' => $request->message,
-            'message_id' => $request->message_id,
+            'message_id' => $messageId,
             'created_at' => $request->timestamp ? now()->parse($request->timestamp) : now(),
             'metadata' => $request->metadata ?? [],
             'direction' => 'inbound',
@@ -296,9 +300,9 @@ class InternalController extends Controller
         // 2. Status is 'disconnected' but has session_data (reconnection case)
         // 3. Status is 'connected' (checking connection state)
         $allowedStatuses = ['connecting', 'connected'];
-        $hasSession = !empty($instance->session_data);
-        
-        if (!in_array($instance->status, $allowedStatuses) && !$hasSession) {
+        $hasSession = ! empty($instance->session_data);
+
+        if (! in_array($instance->status, $allowedStatuses) && ! $hasSession) {
             return response()->json([
                 'success' => false,
                 'error' => [
