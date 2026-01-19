@@ -309,9 +309,12 @@ function startMessagesAutoRefresh() {
     messagesRefreshInterval = setInterval(() => {
         // Only refresh if page is visible (not hidden in background tab)
         if (!document.hidden) {
+            console.log('🔄 Auto-refreshing messages...');
             loadMessages(true); // silent = true (don't show loading spinner)
         }
     }, MESSAGES_REFRESH_INTERVAL_MS);
+    
+    console.log('✅ Auto-refresh started. Checking for new messages every', MESSAGES_REFRESH_INTERVAL_MS, 'ms');
 }
 
 // Stop auto-refresh for messages
@@ -366,21 +369,67 @@ function loadMessages(silent = false) {
             console.log('Total messages received from API:', messages.length);
             console.log('Pagination info:', data.data?.pagination);
             
-            // Filter out group messages
+            // Filter out group messages (backend already filters, but double-check for safety)
             const newAllMessages = messages.filter(msg => {
-                const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
-                const isGroup = isGroupJID(contactJID);
-                if (isGroup) {
-                    console.log('Filtered out group message:', contactJID);
+                // Check both from and to fields to ensure it's not a group
+                const fromIsGroup = isGroupJID(msg.from);
+                const toIsGroup = isGroupJID(msg.to);
+                
+                if (fromIsGroup || toIsGroup) {
+                    console.log('Filtered out group message:', {
+                        id: msg.id,
+                        from: msg.from,
+                        to: msg.to,
+                        fromIsGroup,
+                        toIsGroup
+                    });
+                    return false;
                 }
-                return !isGroup;
+                
+                // Additional check: ensure it's a valid private message JID
+                const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
+                const isValidPrivate = contactJID && (
+                    contactJID.includes('@s.whatsapp.net') || 
+                    contactJID.match(/^\d+@s\.whatsapp\.net$/)
+                );
+                
+                if (!isValidPrivate && !fromIsGroup && !toIsGroup) {
+                    console.warn('Potentially invalid JID format:', {
+                        id: msg.id,
+                        direction: msg.direction,
+                        from: msg.from,
+                        to: msg.to,
+                        contactJID
+                    });
+                }
+                
+                return true;
             });
             
             console.log('Messages after filtering groups:', newAllMessages.length);
+            console.log('Sample messages:', newAllMessages.slice(0, 3).map(m => ({
+                id: m.id,
+                from: m.from,
+                to: m.to,
+                body: m.body?.substring(0, 30),
+                direction: m.direction
+            })));
             
             // Check if we have new messages (compare IDs)
             const oldMessageIds = new Set(allMessages.map(m => m.id));
-            const hasNewMessages = newAllMessages.some(msg => !oldMessageIds.has(msg.id));
+            const newMessages = newAllMessages.filter(msg => !oldMessageIds.has(msg.id));
+            const hasNewMessages = newMessages.length > 0;
+            
+            if (hasNewMessages) {
+                console.log(`✨ Found ${newMessages.length} new message(s)!`, newMessages.map(m => ({
+                    id: m.id,
+                    from: m.from,
+                    to: m.to,
+                    body: m.body?.substring(0, 30),
+                    direction: m.direction,
+                    created_at: m.created_at
+                })));
+            }
             
             // Update allMessages
             allMessages = newAllMessages;

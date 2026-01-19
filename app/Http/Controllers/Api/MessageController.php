@@ -135,12 +135,14 @@ class MessageController extends Controller
 
         // Filter out group messages - only show private messages
         // Groups have @g.us or @lid in the JID
-        // Use OR logic: message should not be from a group AND should not be to a group
+        // Message should not be from a group AND should not be to a group
         $query->where(function ($q) {
             $q->where(function ($subQ) {
+                // from field should not contain group identifiers
                 $subQ->where('from', 'not like', '%@g.us')
                     ->where('from', 'not like', '%@lid');
             })->where(function ($subQ) {
+                // to field should not contain group identifiers
                 $subQ->where('to', 'not like', '%@g.us')
                     ->where('to', 'not like', '%@lid');
             });
