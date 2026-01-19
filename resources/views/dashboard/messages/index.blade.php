@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('content')
 <div class="h-[calc(100vh-120px)] flex flex-col">
@@ -116,7 +116,7 @@
                         <div id="chatImagePreview" class="hidden mt-2 relative">
                             <img id="chatImagePreviewImg" src="" alt="Preview" class="max-w-xs rounded-lg">
                             <button type="button" onclick="removeImagePreview()" class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                                ×
+                                ├ù
                             </button>
                         </div>
                     </div>
@@ -194,11 +194,8 @@ function extractPhoneNumber(jid) {
     // Remove any non-digit characters except +
     phone = phone.replace(/[^\d+]/g, '');
     
-    // For @lid format, extract the number part (can be 10-16 digits for phone numbers)
-    // Group IDs are typically 16+ digits, so allow up to 16 digits
-    // Some international numbers can be up to 16 digits
-    if (phone && phone.length > 16) {
-        // If it's longer than 16 digits, it's likely a group ID
+    // If phone is too long (group ID), return null
+    if (phone && phone.length > 15) {
         return null;
     }
     
@@ -215,23 +212,22 @@ function extractPhoneNumber(jid) {
 function formatPhoneNumber(phone) {
     if (!phone) return 'Unknown';
     
+    // If phone is a long number (likely group ID or invalid), show shortened
+    if (phone.length > 20) {
+        return phone.substring(0, 15) + '...';
+    }
+    
     // Remove any non-digit characters except +
     let digits = phone.replace(/[^\d+]/g, '');
     
-    // If it's too long after cleaning, try to extract valid phone number
-    if (digits.length > 16) {
-        // Likely a group ID or invalid - show shortened
-        return digits.substring(0, 15) + '...';
-    }
-    
-    // If still too long but <= 16, try to format it
+    // If it's too long after cleaning, it's likely invalid
     if (digits.length > 15) {
-        // Might be a long international number - try to extract last 12 digits
+        // Try to extract last 9-12 digits as phone number
         const lastDigits = digits.slice(-12);
         if (lastDigits.length >= 9) {
             digits = lastDigits;
         } else {
-            // Keep original if we can't extract a valid number
+            return phone.substring(0, 15) + '...';
         }
     }
     
@@ -239,11 +235,11 @@ function formatPhoneNumber(phone) {
     const numOnly = hasPlus ? digits.substring(1) : digits;
     
     // Skip if still too long
-    if (numOnly.length > 16) {
-        return digits.substring(0, 15) + '...';
+    if (numOnly.length > 15) {
+        return phone.substring(0, 15) + '...';
     }
     
-    // Handle Tanzanian numbers with country code (255...)
+    // Handle Tanzanian numbers (255...)
     if (numOnly.length >= 12 && numOnly.startsWith('255')) {
         // Format: +255 712 345 678
         const country = numOnly.substring(0, 3);
@@ -252,72 +248,12 @@ function formatPhoneNumber(phone) {
         return (hasPlus ? '+' : '') + country + ' ' + operator + ' ' + rest.match(/.{1,3}/g)?.join(' ') || rest;
     }
     
-    // Try to detect if number might be Tanzania format (255...)
-    // If it starts with 255 and is 12-15 digits, format as Tanzania number
-    if (numOnly.length >= 12 && numOnly.startsWith('255')) {
-        // Tanzanian number with country code
-        const country = numOnly.substring(0, 3);
-        const operator = numOnly.substring(3, 6);
-        const rest = numOnly.substring(6);
-        return (hasPlus ? '+' : '') + country + ' ' + operator + ' ' + rest.match(/.{1,3}/g)?.join(' ') || rest;
-    }
-    
-    // Handle numbers starting with 898 (might be special format - WhatsApp LID format)
-    // These might not be real phone numbers, but format them nicely anyway
-    if (numOnly.length >= 12 && numOnly.startsWith('898')) {
-        // 898... is likely a special WhatsApp format
-        // Format as: 898 164 232 602 22 (split into groups of 3, last group can be 2 digits)
-        if (numOnly.length === 14) {
-            // 89816423260222 → 898 164 232 602 22
-            return numOnly.substring(0, 3) + ' ' + 
-                   numOnly.substring(3, 6) + ' ' + 
-                   numOnly.substring(6, 9) + ' ' + 
-                   numOnly.substring(9, 12) + ' ' + 
-                   numOnly.substring(12);
-        }
-        // Generic formatting for other lengths
-        return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
-    }
-    
-    // Handle numbers starting with 1 and length 13-15 (might be special format)
-    if (numOnly.length >= 13 && numOnly.length <= 15 && numOnly.startsWith('1')) {
-        // 165515876151525 (15 digits) - might be special format
-        // Format as: 1 655 158 761 515 25 (split into groups, last group can be 2 digits)
-        if (numOnly.length === 15) {
-            // 165515876151525 → 1 655 158 761 515 25
-            return numOnly.substring(0, 1) + ' ' + 
-                   numOnly.substring(1, 4) + ' ' + 
-                   numOnly.substring(4, 7) + ' ' + 
-                   numOnly.substring(7, 10) + ' ' + 
-                   numOnly.substring(10, 13) + ' ' + 
-                   numOnly.substring(13);
-        }
-        // Generic formatting for other lengths
-        return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
-    }
-    
     // Handle local Tanzanian numbers (07... or 06...)
-    if (numOnly.length >= 9 && numOnly.length <= 12 && (numOnly.startsWith('07') || numOnly.startsWith('06'))) {
+    if (numOnly.length >= 9 && (numOnly.startsWith('07') || numOnly.startsWith('06'))) {
         // Format: 0712 345 678
         const operator = numOnly.substring(0, 3);
         const rest = numOnly.substring(3);
         return operator + ' ' + rest.match(/.{1,3}/g)?.join(' ') || rest;
-    }
-    
-    // Handle other numbers with 10-15 digits
-    if (numOnly.length >= 10 && numOnly.length <= 15) {
-        // Try to format as international number
-        // If starts with country code pattern, format accordingly
-        if (numOnly.startsWith('1') && numOnly.length >= 11) {
-            // US/Canada or other 1-xxx numbers
-            return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
-        } else if (numOnly.startsWith('8') && numOnly.length >= 12) {
-            // Other 8xx country codes
-            return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
-        } else {
-            // Generic formatting: split into groups of 3
-            return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
-        }
     }
     
     // Handle other international numbers
@@ -392,12 +328,12 @@ function startMessagesAutoRefresh() {
     messagesRefreshInterval = setInterval(() => {
         // Only refresh if page is visible (not hidden in background tab)
         if (!document.hidden) {
-            console.log('🔄 Auto-refreshing messages...');
+            console.log('≡ƒöä Auto-refreshing messages...');
             loadMessages(true); // silent = true (don't show loading spinner)
         }
     }, MESSAGES_REFRESH_INTERVAL_MS);
     
-    console.log('✅ Auto-refresh started. Checking for new messages every', MESSAGES_REFRESH_INTERVAL_MS, 'ms');
+    console.log('Γ£à Auto-refresh started. Checking for new messages every', MESSAGES_REFRESH_INTERVAL_MS, 'ms');
 }
 
 // Stop auto-refresh for messages
@@ -490,7 +426,7 @@ function loadMessages(silent = false) {
             const hasNewMessages = newMessages.length > 0;
             
             if (hasNewMessages) {
-                console.log(`✨ Found ${newMessages.length} new message(s)!`, newMessages.map(m => ({
+                console.log(`Γ£¿ Found ${newMessages.length} new message(s)!`, newMessages.map(m => ({
                     id: m.id,
                     from: m.from,
                     to: m.to,
@@ -640,44 +576,23 @@ function renderMessagesList() {
             let formattedPhone;
             let phoneLastDigit;
             
-            // Extract and format phone number
-            if (!phoneNumber) {
-                // Try to extract from JID directly if extraction failed
-                const rawJID = contactJID ? contactJID.replace(/@.*$/, '') : '';
-                const cleanedJID = rawJID.replace(/[^\d+]/g, '');
-                
-                console.warn(`Message ${index + 1}: Failed to extract phone number, using JID:`, {
+            // Log if phone number extraction fails
+            if (!phoneNumber || phoneNumber.length > 15) {
+                console.warn(`Message ${index + 1}: Failed to extract phone number:`, {
                     id: msg.id,
                     jid: contactJID,
-                    rawJID: rawJID,
-                    cleanedJID: cleanedJID,
                     direction: msg.direction,
                     from: msg.from,
                     to: msg.to,
                     extractedPhone: phoneNumber
                 });
-                
-                // Try to format the cleaned JID
-                if (cleanedJID && cleanedJID.length <= 16) {
-                    formattedPhone = formatPhoneNumber(cleanedJID) || cleanedJID;
-                    phoneLastDigit = cleanedJID.slice(-1) || '?';
-                } else {
-                    // Last resort: show shortened version
-                    formattedPhone = rawJID.substring(0, 15) + (rawJID.length > 15 ? '...' : '') || 'Unknown';
-                    phoneLastDigit = rawJID.slice(-1) || '?';
-                }
+                // Still render the message, but use JID or a fallback
+                const fallbackPhone = contactJID ? contactJID.replace(/@.*$/, '').substring(0, 15) : 'Unknown';
+                formattedPhone = fallbackPhone || 'Unknown';
+                phoneLastDigit = fallbackPhone ? fallbackPhone.slice(-1) : '?';
             } else {
-                // Format the extracted phone number
                 formattedPhone = formatPhoneNumber(phoneNumber);
                 phoneLastDigit = phoneNumber.slice(-1) || '?';
-                
-                // Debug log for phone number formatting
-                console.log(`Message ${index + 1}: Phone number formatted`, {
-                    jid: contactJID,
-                    extracted: phoneNumber,
-                    formatted: formattedPhone,
-                    length: phoneNumber.length
-                });
             }
             
             // Continue with rendering
