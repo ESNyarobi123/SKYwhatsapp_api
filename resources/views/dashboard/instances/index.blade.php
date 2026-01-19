@@ -115,10 +115,15 @@
 <!-- QR Code Modal -->
 <div id="qrModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
     <div class="bg-[#252525] border border-white/5 rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 class="text-xl font-semibold text-white mb-4">QR Code</h2>
-        <div id="qrCodeContent" class="text-center">
-            <p class="text-white/70">Loading QR code...</p>
+        <h2 class="text-xl font-semibold text-white mb-2">Scan QR Code</h2>
+        <p class="text-white/60 text-sm mb-4 text-center">Open WhatsApp on your phone → Settings → Linked Devices → Link a Device, then scan this QR code</p>
+        <div id="qrCodeContent" class="text-center bg-white p-4 rounded-lg min-h-[300px] flex items-center justify-center">
+            <div class="flex flex-col items-center justify-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div>
+                <p class="mt-3 text-gray-700">Waiting for QR code...</p>
+            </div>
         </div>
+        <div id="qrCodeStatus" class="mt-4 text-center text-sm text-white/60"></div>
         <div class="mt-6 text-center">
             <x-button type="button" variant="outline" size="md" onclick="closeQrModal()">Close</x-button>
         </div>
@@ -127,6 +132,9 @@
 
 @push('scripts')
 <script>
+let qrPollInterval = null;
+let currentInstanceId = null;
+
 function openCreateInstanceModal() {
     document.getElementById('createInstanceModal').classList.remove('hidden');
 }
@@ -136,6 +144,10 @@ function closeCreateInstanceModal() {
 }
 
 function connectInstance(instanceId) {
+    // Show QR modal immediately
+    openQrModal(instanceId);
+    
+    // Start connection process
     fetch(`/api/instances/${instanceId}/connect`, {
         method: 'POST',
         headers: {
@@ -146,15 +158,94 @@ function connectInstance(instanceId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            window.location.reload();
+            // Start polling for QR code
+            startQrPolling(instanceId);
         } else {
+            closeQrModal();
             alert(data.error?.message || 'Failed to connect instance');
         }
+    })
+    .catch(error => {
+        closeQrModal();
+        alert('Failed to connect instance. Please try again.');
+        console.error('Connection error:', error);
     });
 }
 
-function showQrCode(instanceId) {
+function openQrModal(instanceId) {
+    currentInstanceId = instanceId;
     document.getElementById('qrModal').classList.remove('hidden');
+    document.getElementById('qrCodeContent').innerHTML = `
+        <div class="flex flex-col items-center justify-center py-8 min-h-[300px]">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div>
+            <p class="mt-3 text-gray-700">Waiting for QR code...</p>
+        </div>
+    `;
+    document.getElementById('qrCodeStatus').textContent = '';
+}
+
+function startQrPolling(instanceId) {
+    // Clear any existing interval
+    if (qrPollInterval) {
+        clearInterval(qrPollInterval);
+    }
+    
+    let pollCount = 0;
+    const maxPolls = 60; // Poll for up to 2 minutes (60 * 2 seconds)
+    
+    // Poll immediately first time
+    checkQrCode(instanceId);
+    
+    // Then poll every 2 seconds
+    qrPollInterval = setInterval(() => {
+        pollCount++;
+        
+        if (pollCount >= maxPolls) {
+            stopQrPolling();
+            document.getElementById('qrCodeContent').innerHTML = `
+                <p class="text-[#EA3943] py-8">QR code generation timed out. Please try connecting again.</p>
+            `;
+            return;
+        }
+        
+        checkQrCode(instanceId);
+    }, 2000);
+}
+
+function checkQrCode(instanceId) {
+    // First check instance status
+    fetch(`/api/instances/${instanceId}`, {
+        headers: {
+            'Accept': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.data.instance) {
+            const instance = data.data.instance;
+            
+            // If connected, stop polling and close modal
+            if (instance.status === 'connected') {
+                stopQrPolling();
+                document.getElementById('qrCodeContent').innerHTML = `
+                    <div class="py-8">
+                        <div class="text-[#00D9A5] text-lg font-semibold mb-2">✓ Connected Successfully!</div>
+                        <p class="text-white/70 text-sm">Your WhatsApp instance is now linked.</p>
+                    </div>
+                `;
+                setTimeout(() => {
+                    closeQrModal();
+                    window.location.reload();
+                }, 2000);
+                return;
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Status check error:', error);
+    });
+    
+    // Then check for QR code
     fetch(`/api/instances/${instanceId}/qr`, {
         headers: {
             'Accept': 'application/json',
@@ -162,17 +253,123 @@ function showQrCode(instanceId) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            document.getElementById('qrCodeContent').innerHTML = `<img src="${data.data.qr_code}" alt="QR Code" class="mx-auto max-w-full">`;
+        if (data.success && data.data.qr_code) {
+            // Stop polling once we have QR code
+            stopQrPolling();
+            
+            // Display QR code
+            const qrCode = data.data.qr_code;
+            let qrImageHtml = '';
+            
+            // Check if QR code is base64 or data URL
+            if (qrCode.startsWith('data:image')) {
+                // It's already a data URL
+                qrImageHtml = `<img src="${qrCode}" alt="QR Code" class="mx-auto max-w-full h-auto" style="max-width: 300px; height: auto;">`;
+            } else if (qrCode.startsWith('http://') || qrCode.startsWith('https://')) {
+                // It's a URL
+                qrImageHtml = `<img src="${qrCode}" alt="QR Code" class="mx-auto max-w-full h-auto" style="max-width: 300px; height: auto;">`;
+            } else if (qrCode.includes('▄') || qrCode.includes('█')) {
+                // It's ASCII art QR code - display as preformatted text with black background
+                qrImageHtml = `<pre class="text-black text-[10px] font-mono bg-white p-4 rounded overflow-auto text-left" style="max-width: 300px; margin: 0 auto; line-height: 1.2;">${qrCode}</pre>`;
+            } else {
+                // Assume it's base64, convert to data URL
+                qrImageHtml = `<img src="data:image/png;base64,${qrCode}" alt="QR Code" class="mx-auto max-w-full h-auto" style="max-width: 300px; height: auto;">`;
+            }
+            
+            document.getElementById('qrCodeContent').innerHTML = qrImageHtml;
+            
+            // Show expiration info if available
+            if (data.data.expires_at) {
+                const expiresAt = new Date(data.data.expires_at);
+                const minutesLeft = Math.ceil((expiresAt - new Date()) / 60000);
+                if (minutesLeft > 0) {
+                    document.getElementById('qrCodeStatus').textContent = `QR code expires in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}`;
+                }
+            }
+            
+            // Restart polling to check for connection status
+            startStatusPolling(instanceId);
+        } else if (data.error?.code === 'QR_NOT_AVAILABLE') {
+            // QR not available yet, keep waiting
+            document.getElementById('qrCodeContent').innerHTML = `
+                <div class="flex flex-col items-center justify-center py-8 min-h-[300px]">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div>
+                    <p class="mt-3 text-gray-700">Generating QR code...</p>
+                </div>
+            `;
         } else {
-            document.getElementById('qrCodeContent').innerHTML = `<p class="text-[#EA3943]">${data.error?.message || 'QR code not available'}</p>`;
+            // Error getting QR code
+            document.getElementById('qrCodeContent').innerHTML = `
+                <p class="text-[#EA3943] py-8">${data.error?.message || 'Failed to load QR code'}</p>
+            `;
         }
+    })
+    .catch(error => {
+        console.error('QR check error:', error);
     });
 }
 
-function closeQrModal() {
-    document.getElementById('qrModal').classList.add('hidden');
+function startStatusPolling(instanceId) {
+    // Poll every 3 seconds to check connection status
+    if (qrPollInterval) {
+        clearInterval(qrPollInterval);
+    }
+    
+    qrPollInterval = setInterval(() => {
+        fetch(`/api/instances/${instanceId}`, {
+            headers: {
+                'Accept': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.instance) {
+                const instance = data.data.instance;
+                
+                if (instance.status === 'connected') {
+                    stopQrPolling();
+                    document.getElementById('qrCodeContent').innerHTML = `
+                        <div class="py-8">
+                            <div class="text-[#00D9A5] text-lg font-semibold mb-2">✓ Connected Successfully!</div>
+                            <p class="text-white/70 text-sm">Your WhatsApp instance is now linked.</p>
+                        </div>
+                    `;
+                    document.getElementById('qrCodeStatus').textContent = '';
+                    setTimeout(() => {
+                        closeQrModal();
+                        window.location.reload();
+                    }, 2000);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Status polling error:', error);
+        });
+    }, 3000);
 }
+
+function stopQrPolling() {
+    if (qrPollInterval) {
+        clearInterval(qrPollInterval);
+        qrPollInterval = null;
+    }
+}
+
+function showQrCode(instanceId) {
+    openQrModal(instanceId);
+    checkQrCode(instanceId);
+}
+
+function closeQrModal() {
+    stopQrPolling();
+    document.getElementById('qrModal').classList.add('hidden');
+    currentInstanceId = null;
+}
+
+// Clean up on page unload
+window.addEventListener('beforeunload', () => {
+    stopQrPolling();
+});
 </script>
 @endpush
 @endsection

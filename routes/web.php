@@ -73,6 +73,7 @@ Route::middleware('auth')->group(function () {
 
     // API routes for web forms (using same controllers but for web)
     Route::post('/api/instances', [InstanceController::class, 'store'])->name('api.instances.store');
+    Route::get('/api/instances/{instance}', [InstanceController::class, 'show'])->name('api.instances.show');
     Route::delete('/api/instances/{instance}', [InstanceController::class, 'destroy'])->name('api.instances.destroy');
     Route::post('/api/instances/{instance}/connect', [InstanceController::class, 'connect'])->name('api.instances.connect');
     Route::get('/api/instances/{instance}/qr', [InstanceController::class, 'qr'])->name('api.instances.qr');
