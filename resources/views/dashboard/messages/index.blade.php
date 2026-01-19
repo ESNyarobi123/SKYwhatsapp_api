@@ -9,9 +9,9 @@
     </div>
 
     <!-- WhatsApp-like Two-Pane Layout -->
-    <div class="flex-1 flex bg-[#0B141A] rounded-lg border border-white/10 overflow-hidden" style="background-color: #0B141A !important;">
+    <div class="flex-1 flex bg-[#0B141A] rounded-lg border border-white/10 overflow-hidden min-h-0" style="background-color: #0B141A !important;">
         <!-- Left Pane: Contacts List -->
-        <div class="w-1/3 border-r border-white/10 bg-[#111B21] flex flex-col" style="background-color: #111B21 !important;">
+        <div class="w-1/3 min-w-[300px] max-w-[400px] border-r border-white/10 bg-[#111B21] flex flex-col" style="background-color: #111B21 !important;">
             <!-- Search and Filter Header -->
             <div class="p-4 border-b border-white/10 bg-[#202C33]" style="background-color: #202C33 !important;">
                 <div class="flex items-center space-x-2 mb-3">
@@ -36,11 +36,8 @@
             </div>
 
             <!-- Contacts List -->
-            <div id="contactsList" class="flex-1 overflow-y-auto">
-                <div class="flex items-center justify-center py-8">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div>
-                    <p class="ml-3 text-white/70">Loading contacts...</p>
-                </div>
+            <div id="contactsList" class="flex-1 overflow-y-auto bg-[#0B141A]" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;">
+                <!-- Loading state will be shown here initially -->
             </div>
         </div>
 
@@ -66,17 +63,20 @@
 
             <!-- Empty State (shown when no contact selected) -->
             <div id="emptyChatState" class="flex-1 flex items-center justify-center">
-                <div class="text-center">
-                    <svg class="w-24 h-24 mx-auto text-white/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <p class="text-white/60 text-lg mb-2">Select a contact to start chatting</p>
-                    <p class="text-white/40 text-sm">Choose a conversation from the list on the left</p>
+                <div class="text-center max-w-md mx-auto px-4">
+                    <div class="w-32 h-32 mx-auto mb-6 rounded-full bg-[#FCD535]/10 flex items-center justify-center">
+                        <svg class="w-16 h-16 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-white text-xl font-semibold mb-2">No conversation selected</h3>
+                    <p class="text-white/60 text-sm mb-4">Select a contact from the list on the left to start chatting</p>
+                    <p class="text-white/40 text-xs">Your messages will appear here once you select a conversation</p>
                 </div>
             </div>
 
             <!-- Messages Area (shown when contact selected) -->
-            <div id="chatMessagesArea" class="hidden flex-1 overflow-y-auto p-4 space-y-2">
+            <div id="chatMessagesArea" class="hidden flex-1 overflow-y-auto p-4 space-y-2" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;">
                 <!-- Messages will be loaded here -->
             </div>
 
@@ -153,10 +153,23 @@ function extractPhoneNumber(jid) {
         return null;
     }
     
-    // Remove @s.whatsapp.net, etc.
+    // Remove @s.whatsapp.net, @lid, etc.
     let phone = jid.replace(/@.*$/, '');
+    
     // Remove any non-digit characters except +
     phone = phone.replace(/[^\d+]/g, '');
+    
+    // If phone is too long (group ID), return null
+    if (phone && phone.length > 15) {
+        return null;
+    }
+    
+    // If phone starts with +, keep it
+    if (phone.startsWith('+')) {
+        return phone;
+    }
+    
+    // Return cleaned phone number
     return phone || null;
 }
 
@@ -164,14 +177,32 @@ function extractPhoneNumber(jid) {
 function formatPhoneNumber(phone) {
     if (!phone) return 'Unknown';
     
+    // If phone is a long number (likely group ID or invalid), show shortened
+    if (phone.length > 20) {
+        return phone.substring(0, 15) + '...';
+    }
+    
     // Remove any non-digit characters except +
     let digits = phone.replace(/[^\d+]/g, '');
     
-    // If it's a group ID (long number), return as is
-    if (digits.length > 15) return phone;
+    // If it's too long after cleaning, it's likely invalid
+    if (digits.length > 15) {
+        // Try to extract last 9-12 digits as phone number
+        const lastDigits = digits.slice(-12);
+        if (lastDigits.length >= 9) {
+            digits = lastDigits;
+        } else {
+            return phone.substring(0, 15) + '...';
+        }
+    }
     
     const hasPlus = digits.startsWith('+');
     const numOnly = hasPlus ? digits.substring(1) : digits;
+    
+    // Skip if still too long
+    if (numOnly.length > 15) {
+        return phone.substring(0, 15) + '...';
+    }
     
     // Handle Tanzanian numbers (255...)
     if (numOnly.length >= 12 && numOnly.startsWith('255')) {
@@ -190,18 +221,28 @@ function formatPhoneNumber(phone) {
         return operator + ' ' + rest.match(/.{1,3}/g)?.join(' ') || rest;
     }
     
-    // Format other numbers
-    if (numOnly.length >= 10) {
+    // Handle other international numbers
+    if (numOnly.length >= 10 && numOnly.length <= 15) {
         return (hasPlus ? '+' : '') + numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
     }
     
-    return phone;
+    // If all else fails, return cleaned version
+    return (hasPlus ? '+' : '') + numOnly || phone.substring(0, 15);
 }
 
 // Load contacts list (left pane)
 function loadContacts() {
     const contactsList = document.getElementById('contactsList');
-    contactsList.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div><p class="ml-3 text-white/70">Loading contacts...</p></div>';
+    
+    // Show loading state
+    contactsList.innerHTML = `
+        <div class="flex items-center justify-center py-12">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FCD535] mx-auto mb-3"></div>
+                <p class="text-white/70 text-sm">Loading contacts...</p>
+            </div>
+        </div>
+    `;
     
     const instanceId = document.getElementById('filterInstance')?.value || '';
     const searchTerm = document.getElementById('contactSearch')?.value.toLowerCase() || '';
@@ -211,7 +252,12 @@ function loadContacts() {
             'Accept': 'application/json',
         },
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to load contacts');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             const messages = data.data.messages || [];
@@ -227,18 +273,26 @@ function loadContacts() {
                     return;
                 }
                 
+                // Extract phone number from JID
                 const phoneNumber = extractPhoneNumber(contactJID);
-                if (!phoneNumber) return;
                 
-                const contactKey = `${phoneNumber}_${msg.instance_id}`;
+                // Skip if no valid phone number or if it's too long (likely group ID)
+                if (!phoneNumber || phoneNumber.length > 15) {
+                    return; // Skip this message
+                }
+                
+                // Normalize for grouping (remove + for consistency)
+                const normalizedPhone = phoneNumber.replace(/^\+/, '');
+                const contactKey = `${normalizedPhone}_${msg.instance_id}`;
                 
                 if (!contactsMap.has(contactKey)) {
                     contactsMap.set(contactKey, {
-                        phoneNumber: phoneNumber,
-                        jid: contactJID,
+                        phoneNumber: phoneNumber, // Store extracted phone number
+                        normalizedPhone: normalizedPhone, // For comparison
+                        jid: contactJID, // Store JID for sending messages
                         instanceId: msg.instance_id,
                         instanceName: msg.instance?.name || 'Unknown',
-                        lastMessage: msg.body || '[Media]',
+                        lastMessage: (msg.body && msg.body !== '[Media or unsupported message type]') ? msg.body : '[Media]',
                         lastMessageTime: msg.created_at,
                         unreadCount: 0,
                         lastMessageDirection: msg.direction
@@ -246,7 +300,7 @@ function loadContacts() {
                 } else {
                     const contact = contactsMap.get(contactKey);
                     if (new Date(msg.created_at) > new Date(contact.lastMessageTime)) {
-                        contact.lastMessage = msg.body || '[Media]';
+                        contact.lastMessage = (msg.body && msg.body !== '[Media or unsupported message type]') ? msg.body : '[Media]';
                         contact.lastMessageTime = msg.created_at;
                         contact.lastMessageDirection = msg.direction;
                     }
@@ -270,7 +324,20 @@ function loadContacts() {
     })
     .catch(error => {
         console.error('Error loading contacts:', error);
-        contactsList.innerHTML = '<p class="text-red-500 text-center py-8">Error loading contacts</p>';
+        contactsList.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-16 px-4">
+                <div class="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                    <svg class="w-10 h-10 text-red-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3 class="text-white font-semibold text-lg mb-2">Error loading contacts</h3>
+                <p class="text-white/60 text-sm text-center mb-4">Failed to load contacts. Please try again.</p>
+                <button onclick="loadContacts()" class="px-4 py-2 bg-[#FCD535] hover:bg-[#F0C420] text-black rounded-lg text-sm font-medium transition-colors">
+                    Retry
+                </button>
+            </div>
+        `;
     });
 }
 
@@ -284,7 +351,15 @@ function renderContactsList() {
     }
     
     contactsList.innerHTML = filteredContacts.map(contact => {
-        const formattedPhone = formatPhoneNumber(contact.phoneNumber);
+        // Use stored phone number (already extracted)
+        const phoneToDisplay = contact.phoneNumber || extractPhoneNumber(contact.jid);
+        
+        // Skip if still invalid
+        if (!phoneToDisplay || phoneToDisplay.length > 15) {
+            return ''; // Skip this contact
+        }
+        
+        const formattedPhone = formatPhoneNumber(phoneToDisplay);
         const lastMessageTime = new Date(contact.lastMessageTime);
         const timeStr = lastMessageTime.toLocaleDateString() === new Date().toLocaleDateString()
             ? lastMessageTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -294,22 +369,26 @@ function renderContactsList() {
                           selectedContact.phoneNumber === contact.phoneNumber && 
                           selectedContact.instanceId === contact.instanceId;
         
+        // Escape instance name and last message for safety
+        const safeInstanceName = escapeHtml(contact.instanceName);
+        const safeLastMessage = escapeHtml(contact.lastMessage.substring(0, 40));
+        
         return `
             <div 
-                class="flex items-center space-x-3 p-3 hover:bg-white/5 cursor-pointer transition-colors ${isSelected ? 'bg-white/10' : ''}"
-                onclick="selectContact('${contact.phoneNumber}', '${contact.jid}', ${contact.instanceId}, '${contact.instanceName}')"
+                class="flex items-center space-x-3 p-4 hover:bg-white/5 cursor-pointer transition-all duration-150 border-b border-white/5 ${isSelected ? 'bg-[#202C33] border-l-4 border-l-[#FCD535]' : 'hover:border-l-4 hover:border-l-white/10'}"
+                onclick="selectContact('${contact.phoneNumber.replace(/'/g, "\\'")}', '${contact.jid.replace(/'/g, "\\'")}', ${contact.instanceId}, '${safeInstanceName.replace(/'/g, "\\'")}')"
             >
-                <div class="w-12 h-12 rounded-full bg-[#FCD535]/20 flex items-center justify-center flex-shrink-0">
-                    <span class="text-[#FCD535] font-semibold">${contact.phoneNumber.slice(-1) || '?'}</span>
+                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-[#FCD535]/30 to-[#FCD535]/10 flex items-center justify-center flex-shrink-0 ring-2 ring-[#FCD535]/20">
+                    <span class="text-[#FCD535] font-bold text-base">${phoneToDisplay ? phoneToDisplay.slice(-1) : '?'}</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between mb-1">
-                        <h4 class="text-white font-medium truncate">${formattedPhone}</h4>
-                        <span class="text-white/50 text-xs flex-shrink-0 ml-2">${timeStr}</span>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <h4 class="text-white font-semibold text-[15px] truncate">${formattedPhone}</h4>
+                        <span class="text-white/50 text-xs flex-shrink-0 ml-2 font-medium">${timeStr}</span>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <p class="text-white/60 text-sm truncate">${escapeHtml(contact.lastMessage.substring(0, 40))}${contact.lastMessage.length > 40 ? '...' : ''}</p>
-                        <span class="text-white/40 text-xs">${contact.instanceName}</span>
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-white/60 text-sm truncate flex-1 leading-relaxed">${safeLastMessage}${contact.lastMessage.length > 40 ? '...' : ''}</p>
+                        ${contact.instanceName ? `<span class="text-[#FCD535]/70 text-[10px] px-2 py-0.5 rounded-full bg-[#FCD535]/10 flex-shrink-0 whitespace-nowrap font-medium">${safeInstanceName}</span>` : ''}
                     </div>
                 </div>
             </div>
