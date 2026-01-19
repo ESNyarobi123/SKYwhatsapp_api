@@ -44,21 +44,30 @@
         <!-- Right Pane: Chat Area -->
         <div class="flex-1 flex flex-col bg-[#0B141A]" style="background-color: #0B141A !important; background-image: url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.02\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');">
             <!-- Chat Header (shown when contact selected) -->
-            <div id="chatHeader" class="hidden bg-[#202C33] px-6 py-4 flex items-center justify-between border-b border-white/10" style="background-color: #202C33 !important;">
+            <div id="chatHeader" class="hidden bg-[#202C33] px-4 py-3 flex items-center justify-between border-b border-white/10" style="background-color: #202C33 !important;">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-full bg-[#FCD535]/20 flex items-center justify-center">
+                    <!-- Back Button (Mobile/Tablet) -->
+                    <button onclick="goBackToMessages()" class="p-2 text-white/70 hover:text-white transition-colors lg:hidden" title="Back">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    
+                    <div class="w-10 h-10 rounded-full bg-[#FCD535]/20 flex items-center justify-center flex-shrink-0">
                         <span class="text-[#FCD535] font-semibold text-sm" id="activeContactInitial">?</span>
                     </div>
-                    <div>
-                        <h3 class="text-white font-semibold" id="activeContactName">Select a contact</h3>
-                        <p class="text-white/60 text-xs" id="activeContactPhone"></p>
+                    <div class="min-w-0">
+                        <h3 class="text-white font-semibold truncate" id="activeContactName">Select a contact</h3>
+                        <p class="text-white/60 text-xs truncate" id="activeContactPhone"></p>
                     </div>
                 </div>
-                <button onclick="refreshChat()" class="p-2 text-white/70 hover:text-white transition-colors" title="Refresh">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button onclick="refreshChat()" class="p-2 text-white/70 hover:text-white transition-colors" title="Refresh">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Empty State (shown when no contact selected) -->
@@ -230,19 +239,73 @@ function formatPhoneNumber(phone) {
     return (hasPlus ? '+' : '') + numOnly || phone.substring(0, 15);
 }
 
-// Load messages list (left pane)
+// Group messages by contact (phone number)
+function groupMessagesByContact(messages) {
+    const contactsMap = new Map();
+    
+    messages.forEach(msg => {
+        const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
+        
+        // Skip groups
+        if (isGroupJID(contactJID)) {
+            return;
+        }
+        
+        // Extract phone number
+        const phoneNumber = extractPhoneNumber(contactJID);
+        if (!phoneNumber || phoneNumber.length > 15) {
+            return;
+        }
+        
+        // Normalize for grouping
+        const normalizedPhone = phoneNumber.replace(/^\+/, '');
+        const contactKey = `${normalizedPhone}_${msg.instance_id}`;
+        
+        if (!contactsMap.has(contactKey)) {
+            contactsMap.set(contactKey, {
+                phoneNumber: phoneNumber,
+                jid: contactJID,
+                instanceId: msg.instance_id,
+                instanceName: msg.instance?.name || 'Unknown',
+                messages: [msg],
+                lastMessage: msg,
+                lastMessageTime: msg.created_at,
+                unreadCount: 0
+            });
+        } else {
+            const contact = contactsMap.get(contactKey);
+            contact.messages.push(msg);
+            
+            // Update last message if this is newer
+            if (new Date(msg.created_at) > new Date(contact.lastMessageTime)) {
+                contact.lastMessage = msg;
+                contact.lastMessageTime = msg.created_at;
+            }
+        }
+    });
+    
+    return Array.from(contactsMap.values());
+}
+
+// Load messages list (left pane) - grouped by contact
 function loadMessages() {
     const messagesList = document.getElementById('messagesList');
     
-    // Show loading state
-    messagesList.innerHTML = `
-        <div class="flex items-center justify-center py-12">
-            <div class="text-center">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FCD535] mx-auto mb-3"></div>
-                <p class="text-white/70 text-sm">Loading messages...</p>
+    // Show loading state only if empty
+    if (allMessages.length === 0) {
+        messagesList.innerHTML = `
+            <div class="flex items-center justify-center py-12">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FCD535] mx-auto mb-3"></div>
+                    <p class="text-white/70 text-sm">Loading conversations...</p>
+                </div>
             </div>
-        </div>
-    `;
+        `;
+    } else {
+        // Show subtle loading indicator
+        const existingContent = messagesList.innerHTML;
+        messagesList.innerHTML = existingContent + '<div id="loadingIndicator" class="text-center py-2"><div class="animate-spin rounded-full h-5 w-5 border-b-2 border-[#FCD535] mx-auto"></div></div>';
+    }
     
     const instanceId = document.getElementById('filterInstance')?.value || '';
     const searchTerm = document.getElementById('messageSearch')?.value.toLowerCase() || '';
@@ -265,7 +328,13 @@ function loadMessages() {
         return response.json();
     })
     .then(data => {
-        console.log('Messages API data:', data);
+        console.log('Messages API response data:', data);
+        
+        // Remove loading indicator
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
         
         if (data.success) {
             const messages = data.data?.messages || [];
@@ -312,7 +381,8 @@ function loadMessages() {
                         </svg>
                     </div>
                     <h3 class="text-white font-semibold text-lg mb-2">No messages available</h3>
-                    <p class="text-white/60 text-sm text-center mb-4">${data.error?.message || 'No messages found'}</p>
+                    <p class="text-white/60 text-sm text-center mb-4">${data.error?.message || 'No messages found. Make sure you have received or sent messages.'}</p>
+                    <p class="text-white/40 text-xs text-center mb-4 mt-2">Check browser console (F12) for more details</p>
                     <button onclick="loadMessages()" class="px-4 py-2 bg-[#FCD535] hover:bg-[#F0C420] text-black rounded-lg text-sm font-medium transition-colors">
                         Retry
                     </button>
@@ -321,30 +391,39 @@ function loadMessages() {
         }
     })
     .catch(error => {
+        // Remove loading indicator
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+        
         console.error('Error loading messages:', error);
         console.error('Error details:', error.message, error.stack);
-        messagesList.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-16 px-4">
-                <div class="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                    <svg class="w-10 h-10 text-red-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+        if (allMessages.length === 0) {
+            messagesList.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-16 px-4">
+                    <div class="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                        <svg class="w-10 h-10 text-red-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-white font-semibold text-lg mb-2">Error loading messages</h3>
+                    <p class="text-white/60 text-sm text-center mb-4">${error.message || 'Failed to load messages. Please check your connection and try again.'}</p>
+                    <p class="text-white/40 text-xs text-center mb-4 mt-2">Check browser console (F12) for more details</p>
+                    <button onclick="loadMessages()" class="px-4 py-2 bg-[#FCD535] hover:bg-[#F0C420] text-black rounded-lg text-sm font-medium transition-colors">
+                        Retry
+                    </button>
                 </div>
-                <h3 class="text-white font-semibold text-lg mb-2">Error loading messages</h3>
-                <p class="text-white/60 text-sm text-center mb-4">${error.message || 'Failed to load messages. Please check your connection and try again.'}</p>
-                <button onclick="loadMessages()" class="px-4 py-2 bg-[#FCD535] hover:bg-[#F0C420] text-black rounded-lg text-sm font-medium transition-colors">
-                    Retry
-                </button>
-            </div>
-        `;
+            `;
+        }
     });
 }
 
-// Render messages list
+// Render messages list (individual messages, not grouped)
 function renderMessagesList() {
     const messagesList = document.getElementById('messagesList');
     
-    if (filteredMessages.length === 0) {
+    if (!filteredMessages || filteredMessages.length === 0) {
         messagesList.innerHTML = `
             <div class="flex flex-col items-center justify-center py-16 px-4">
                 <div class="w-20 h-20 rounded-full bg-[#FCD535]/10 flex items-center justify-center mb-4">
@@ -419,6 +498,24 @@ function renderMessagesList() {
     }).join('');
 }
 
+// Back to messages list
+function goBackToMessages() {
+    // Hide chat area, show empty state
+    document.getElementById('emptyChatState').classList.remove('hidden');
+    document.getElementById('chatHeader').classList.add('hidden');
+    document.getElementById('chatMessagesArea').classList.add('hidden');
+    document.getElementById('chatInputArea').classList.add('hidden');
+    
+    // Clear selection
+    selectedContact = null;
+    selectedMessage = null;
+    currentChatPhone = null;
+    currentChatInstanceId = null;
+    
+    // Re-render messages list to remove selection
+    renderMessagesList();
+}
+
 // Select message and show chat
 function selectMessage(messageId, jid, instanceId, instanceName) {
     // Find the selected message
@@ -467,9 +564,17 @@ function refreshChat() {
     }
 }
 
-function loadChatMessages(phoneNumber, instanceId) {
+function loadChatMessages(phoneNumber, instanceId, silent = false) {
     const messagesContainer = document.getElementById('chatMessagesArea');
-    messagesContainer.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div><p class="ml-3 text-white/70">Loading messages...</p></div>';
+    
+    // Only show loading if not silent update
+    if (!silent) {
+        messagesContainer.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div><p class="ml-3 text-white/70">Loading messages...</p></div>';
+    }
+    
+    // Store current scroll position if silent
+    const scrollPosition = silent ? messagesContainer.scrollTop : null;
+    const wasAtBottom = silent ? (messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 50) : false;
     
     // Fetch messages for this contact
     fetch(`/api/messages?instance_id=${instanceId}&per_page=100`, {
@@ -521,13 +626,16 @@ function loadChatMessages(phoneNumber, instanceId) {
     });
 }
 
-function renderChatMessages(messages) {
+function renderChatMessages(messages, silent = false, wasAtBottom = false, oldScrollHeight = null) {
     const messagesContainer = document.getElementById('chatMessagesArea');
     
     if (messages.length === 0) {
         messagesContainer.innerHTML = '<p class="text-white/60 text-center py-8">No messages yet. Start the conversation!</p>';
         return;
     }
+    
+    // Preserve scroll position for silent updates
+    const currentScrollTop = silent ? messagesContainer.scrollTop : null;
     
     messagesContainer.innerHTML = messages.map(msg => {
         const isInbound = msg.direction === 'inbound';
@@ -571,8 +679,23 @@ function renderChatMessages(messages) {
         `;
     }).join('');
     
-    // Scroll to bottom
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    // Handle scroll position
+    if (silent && oldScrollHeight) {
+        // Maintain scroll position for silent updates
+        const newScrollHeight = messagesContainer.scrollHeight;
+        const scrollDiff = newScrollHeight - oldScrollHeight;
+        
+        if (wasAtBottom) {
+            // Was at bottom, stay at bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        } else if (scrollDiff > 0) {
+            // New messages added above, adjust scroll
+            messagesContainer.scrollTop = currentScrollTop + scrollDiff;
+        }
+    } else {
+        // Normal scroll to bottom
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
 }
 
 function escapeHtml(text) {
@@ -626,8 +749,26 @@ document.getElementById('chatReplyForm').addEventListener('submit', async (e) =>
     }
     
     const sendButton = document.getElementById('chatSendButton');
+    const originalButtonContent = sendButton.innerHTML;
     sendButton.disabled = true;
     sendButton.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>';
+    
+    // Optimistic update - show message immediately
+    const messagesContainer = document.getElementById('chatMessagesArea');
+    const tempId = 'temp_' + Date.now();
+    const optimisticMessage = {
+        id: tempId,
+        direction: 'outbound',
+        body: messageBody || '[Image]',
+        created_at: new Date().toISOString(),
+        status: 'sending',
+        from: 'You',
+        to: toPhone,
+        metadata: chatImageFile ? { hasMedia: true, mediaType: chatImageFile.type } : {}
+    };
+    
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
     
     try {
         const formData = new FormData();
@@ -650,23 +791,38 @@ document.getElementById('chatReplyForm').addEventListener('submit', async (e) =>
         const data = await response.json();
         
         if (data.success) {
+            // Clear input immediately
             messageInput.value = '';
             removeImagePreview();
             
-            // Reload messages and messages list
+            // Reload chat messages in background (silent update)
             setTimeout(() => {
-                loadChatMessages(currentChatPhone, currentChatInstanceId);
-                loadMessages(); // Refresh messages list
+                loadChatMessages(currentChatPhone, currentChatInstanceId, true); // silent = true
+            }, 300);
+            
+            // Reload contacts list in background (silent update)
+            setTimeout(() => {
+                loadMessages(); // This will update the list silently
             }, 500);
         } else {
+            // Remove optimistic message on error
+            const tempMsg = document.getElementById(`msg-${tempId}`);
+            if (tempMsg) {
+                tempMsg.remove();
+            }
             alert(data.error?.message || 'Failed to send message');
         }
     } catch (error) {
+        // Remove optimistic message on error
+        const tempMsg = document.getElementById(`msg-${tempId}`);
+        if (tempMsg) {
+            tempMsg.remove();
+        }
         console.error('Error sending message:', error);
         alert('Failed to send message. Please try again.');
     } finally {
         sendButton.disabled = false;
-        sendButton.innerHTML = '<svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>';
+        sendButton.innerHTML = originalButtonContent;
     }
 });
 
