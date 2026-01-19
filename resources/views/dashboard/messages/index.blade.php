@@ -10,8 +10,8 @@
 
     <!-- WhatsApp-like Two-Pane Layout -->
     <div class="flex-1 flex bg-[#0B141A] rounded-lg border border-white/10 overflow-hidden min-h-0" style="background-color: #0B141A !important;">
-        <!-- Left Pane: Contacts List -->
-        <div class="w-1/3 min-w-[300px] max-w-[400px] border-r border-white/10 bg-[#111B21] flex flex-col" style="background-color: #111B21 !important;">
+        <!-- Left Pane: Messages List -->
+        <div class="w-1/3 min-w-[350px] max-w-[450px] border-r border-white/10 bg-[#111B21] flex flex-col" style="background-color: #111B21 !important;">
             <!-- Search and Filter Header -->
             <div class="p-4 border-b border-white/10 bg-[#202C33]" style="background-color: #202C33 !important;">
                 <div class="flex items-center space-x-2 mb-3">
@@ -25,8 +25,8 @@
                 <div class="relative">
                     <input 
                         type="text" 
-                        id="contactSearch" 
-                        placeholder="Search or start new chat" 
+                        id="messageSearch" 
+                        placeholder="Search messages..." 
                         class="w-full px-4 py-2 pl-10 bg-[#2A3942] border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#FCD535]"
                     >
                     <svg class="w-5 h-5 text-white/40 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,8 +35,8 @@
                 </div>
             </div>
 
-            <!-- Contacts List -->
-            <div id="contactsList" class="flex-1 overflow-y-auto bg-[#0B141A]" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;">
+            <!-- Messages List -->
+            <div id="messagesList" class="flex-1 overflow-y-auto bg-[#0B141A]" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;">
                 <!-- Loading state will be shown here initially -->
             </div>
         </div>
@@ -135,9 +135,9 @@
 let currentChatPhone = null;
 let currentChatInstanceId = null;
 let chatImageFile = null;
-let allContacts = [];
-let filteredContacts = [];
-let selectedContact = null;
+let allMessages = [];
+let filteredMessages = [];
+let selectedMessage = null;
 
 // Check if JID is a group
 function isGroupJID(jid) {
@@ -230,110 +230,109 @@ function formatPhoneNumber(phone) {
     return (hasPlus ? '+' : '') + numOnly || phone.substring(0, 15);
 }
 
-// Load contacts list (left pane)
-function loadContacts() {
-    const contactsList = document.getElementById('contactsList');
+// Load messages list (left pane)
+function loadMessages() {
+    const messagesList = document.getElementById('messagesList');
     
     // Show loading state
-    contactsList.innerHTML = `
+    messagesList.innerHTML = `
         <div class="flex items-center justify-center py-12">
             <div class="text-center">
                 <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FCD535] mx-auto mb-3"></div>
-                <p class="text-white/70 text-sm">Loading contacts...</p>
+                <p class="text-white/70 text-sm">Loading messages...</p>
             </div>
         </div>
     `;
     
     const instanceId = document.getElementById('filterInstance')?.value || '';
-    const searchTerm = document.getElementById('contactSearch')?.value.toLowerCase() || '';
+    const searchTerm = document.getElementById('messageSearch')?.value.toLowerCase() || '';
     
-    fetch(`/api/messages?per_page=100${instanceId ? '&instance_id=' + instanceId : ''}`, {
+    fetch(`/api/messages?per_page=200${instanceId ? '&instance_id=' + instanceId : ''}`, {
         headers: {
             'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
         },
+        credentials: 'same-origin',
     })
     .then(response => {
+        console.log('Messages API response status:', response.status);
         if (!response.ok) {
-            throw new Error('Failed to load contacts');
+            return response.json().then(err => {
+                console.error('API Error:', err);
+                throw new Error(err.message || 'Failed to load messages');
+            });
         }
         return response.json();
     })
     .then(data => {
+        console.log('Messages API data:', data);
+        
         if (data.success) {
-            const messages = data.data.messages || [];
+            const messages = data.data?.messages || [];
+            console.log('Total messages received:', messages.length);
             
-            // Group messages by contact (only private, not groups)
-            const contactsMap = new Map();
-            
-            messages.forEach(msg => {
+            // Filter out group messages
+            allMessages = messages.filter(msg => {
                 const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
-                
-                // Skip groups
-                if (isGroupJID(contactJID)) {
-                    return;
+                const isGroup = isGroupJID(contactJID);
+                if (isGroup) {
+                    console.log('Filtered out group message:', contactJID);
                 }
-                
-                // Extract phone number from JID
-                const phoneNumber = extractPhoneNumber(contactJID);
-                
-                // Skip if no valid phone number or if it's too long (likely group ID)
-                if (!phoneNumber || phoneNumber.length > 15) {
-                    return; // Skip this message
-                }
-                
-                // Normalize for grouping (remove + for consistency)
-                const normalizedPhone = phoneNumber.replace(/^\+/, '');
-                const contactKey = `${normalizedPhone}_${msg.instance_id}`;
-                
-                if (!contactsMap.has(contactKey)) {
-                    contactsMap.set(contactKey, {
-                        phoneNumber: phoneNumber, // Store extracted phone number
-                        normalizedPhone: normalizedPhone, // For comparison
-                        jid: contactJID, // Store JID for sending messages
-                        instanceId: msg.instance_id,
-                        instanceName: msg.instance?.name || 'Unknown',
-                        lastMessage: (msg.body && msg.body !== '[Media or unsupported message type]') ? msg.body : '[Media]',
-                        lastMessageTime: msg.created_at,
-                        unreadCount: 0,
-                        lastMessageDirection: msg.direction
-                    });
-                } else {
-                    const contact = contactsMap.get(contactKey);
-                    if (new Date(msg.created_at) > new Date(contact.lastMessageTime)) {
-                        contact.lastMessage = (msg.body && msg.body !== '[Media or unsupported message type]') ? msg.body : '[Media]';
-                        contact.lastMessageTime = msg.created_at;
-                        contact.lastMessageDirection = msg.direction;
-                    }
-                }
+                return !isGroup;
             });
             
-            allContacts = Array.from(contactsMap.values());
+            console.log('Messages after filtering groups:', allMessages.length);
             
             // Filter by search term
-            filteredContacts = allContacts.filter(contact => {
-                const phone = formatPhoneNumber(contact.phoneNumber);
-                return phone.toLowerCase().includes(searchTerm) || 
-                       contact.instanceName.toLowerCase().includes(searchTerm);
+            filteredMessages = allMessages.filter(msg => {
+                const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
+                const phoneNumber = extractPhoneNumber(contactJID);
+                const formattedPhone = phoneNumber ? formatPhoneNumber(phoneNumber) : '';
+                const messageBody = msg.body || '';
+                const instanceName = msg.instance?.name || '';
+                
+                return formattedPhone.toLowerCase().includes(searchTerm) || 
+                       messageBody.toLowerCase().includes(searchTerm) ||
+                       instanceName.toLowerCase().includes(searchTerm);
             });
             
-            // Sort by last message time (newest first)
-            filteredContacts.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+            console.log('Filtered messages after search:', filteredMessages.length);
             
-            renderContactsList();
+            // Sort by created_at (newest first)
+            filteredMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            
+            renderMessagesList();
+        } else {
+            console.error('API returned success: false', data);
+            messagesList.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-16 px-4">
+                    <div class="w-20 h-20 rounded-full bg-yellow-500/10 flex items-center justify-center mb-4">
+                        <svg class="w-10 h-10 text-yellow-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-white font-semibold text-lg mb-2">No messages available</h3>
+                    <p class="text-white/60 text-sm text-center mb-4">${data.error?.message || 'No messages found'}</p>
+                    <button onclick="loadMessages()" class="px-4 py-2 bg-[#FCD535] hover:bg-[#F0C420] text-black rounded-lg text-sm font-medium transition-colors">
+                        Retry
+                    </button>
+                </div>
+            `;
         }
     })
     .catch(error => {
-        console.error('Error loading contacts:', error);
-        contactsList.innerHTML = `
+        console.error('Error loading messages:', error);
+        console.error('Error details:', error.message, error.stack);
+        messagesList.innerHTML = `
             <div class="flex flex-col items-center justify-center py-16 px-4">
                 <div class="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
                     <svg class="w-10 h-10 text-red-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
-                <h3 class="text-white font-semibold text-lg mb-2">Error loading contacts</h3>
-                <p class="text-white/60 text-sm text-center mb-4">Failed to load contacts. Please try again.</p>
-                <button onclick="loadContacts()" class="px-4 py-2 bg-[#FCD535] hover:bg-[#F0C420] text-black rounded-lg text-sm font-medium transition-colors">
+                <h3 class="text-white font-semibold text-lg mb-2">Error loading messages</h3>
+                <p class="text-white/60 text-sm text-center mb-4">${error.message || 'Failed to load messages. Please check your connection and try again.'}</p>
+                <button onclick="loadMessages()" class="px-4 py-2 bg-[#FCD535] hover:bg-[#F0C420] text-black rounded-lg text-sm font-medium transition-colors">
                     Retry
                 </button>
             </div>
@@ -341,54 +340,78 @@ function loadContacts() {
     });
 }
 
-// Render contacts list
-function renderContactsList() {
-    const contactsList = document.getElementById('contactsList');
+// Render messages list
+function renderMessagesList() {
+    const messagesList = document.getElementById('messagesList');
     
-    if (filteredContacts.length === 0) {
-        contactsList.innerHTML = '<p class="text-white/60 text-center py-8">No contacts found</p>';
+    if (filteredMessages.length === 0) {
+        messagesList.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-16 px-4">
+                <div class="w-20 h-20 rounded-full bg-[#FCD535]/10 flex items-center justify-center mb-4">
+                    <svg class="w-10 h-10 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                </div>
+                <h3 class="text-white font-semibold text-lg mb-2">No messages found</h3>
+                <p class="text-white/60 text-sm text-center max-w-xs">
+                    Start chatting by sending or receiving a message
+                </p>
+            </div>
+        `;
         return;
     }
     
-    contactsList.innerHTML = filteredContacts.map(contact => {
-        // Use stored phone number (already extracted)
-        const phoneToDisplay = contact.phoneNumber || extractPhoneNumber(contact.jid);
+    messagesList.innerHTML = filteredMessages.map(msg => {
+        // Extract contact info
+        const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
+        const phoneNumber = extractPhoneNumber(contactJID);
         
-        // Skip if still invalid
-        if (!phoneToDisplay || phoneToDisplay.length > 15) {
-            return ''; // Skip this contact
+        // Skip if no valid phone number
+        if (!phoneNumber || phoneNumber.length > 15) {
+            return '';
         }
         
-        const formattedPhone = formatPhoneNumber(phoneToDisplay);
-        const lastMessageTime = new Date(contact.lastMessageTime);
-        const timeStr = lastMessageTime.toLocaleDateString() === new Date().toLocaleDateString()
-            ? lastMessageTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-            : lastMessageTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const formattedPhone = formatPhoneNumber(phoneNumber);
+        const messageTime = new Date(msg.created_at);
+        const timeStr = messageTime.toLocaleDateString() === new Date().toLocaleDateString()
+            ? messageTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            : messageTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         
-        const isSelected = selectedContact && 
-                          selectedContact.phoneNumber === contact.phoneNumber && 
-                          selectedContact.instanceId === contact.instanceId;
+        const isSelected = selectedMessage && selectedMessage.id === msg.id;
+        const isInbound = msg.direction === 'inbound';
+        const messageBody = msg.body || '[Media]';
+        const safeMessageBody = escapeHtml(messageBody.substring(0, 60));
+        const safeInstanceName = escapeHtml(msg.instance?.name || 'Unknown');
+        const phoneLastDigit = phoneNumber.slice(-1) || '?';
         
-        // Escape instance name and last message for safety
-        const safeInstanceName = escapeHtml(contact.instanceName);
-        const safeLastMessage = escapeHtml(contact.lastMessage.substring(0, 40));
+        // Direction indicator
+        const directionIcon = isInbound 
+            ? '<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+            : '<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>';
         
         return `
             <div 
-                class="flex items-center space-x-3 p-4 hover:bg-white/5 cursor-pointer transition-all duration-150 border-b border-white/5 ${isSelected ? 'bg-[#202C33] border-l-4 border-l-[#FCD535]' : 'hover:border-l-4 hover:border-l-white/10'}"
-                onclick="selectContact('${contact.phoneNumber.replace(/'/g, "\\'")}', '${contact.jid.replace(/'/g, "\\'")}', ${contact.instanceId}, '${safeInstanceName.replace(/'/g, "\\'")}')"
+                class="flex items-start space-x-3 p-4 hover:bg-white/5 cursor-pointer transition-all duration-150 border-b border-white/5 ${isSelected ? 'bg-[#202C33] border-l-4 border-l-[#FCD535]' : 'hover:border-l-4 hover:border-l-white/10'}"
+                onclick="selectMessage(${msg.id}, '${contactJID.replace(/'/g, "\\'")}', ${msg.instance_id}, '${safeInstanceName.replace(/'/g, "\\'")}')"
             >
-                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-[#FCD535]/30 to-[#FCD535]/10 flex items-center justify-center flex-shrink-0 ring-2 ring-[#FCD535]/20">
-                    <span class="text-[#FCD535] font-bold text-base">${phoneToDisplay ? phoneToDisplay.slice(-1) : '?'}</span>
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[#FCD535]/30 to-[#FCD535]/10 flex items-center justify-center flex-shrink-0 ring-2 ring-[#FCD535]/20">
+                    <span class="text-[#FCD535] font-bold text-sm">${phoneLastDigit}</span>
                 </div>
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between mb-1.5">
-                        <h4 class="text-white font-semibold text-[15px] truncate">${formattedPhone}</h4>
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-white font-semibold text-[15px] truncate">${formattedPhone}</h4>
+                            ${directionIcon}
+                        </div>
                         <span class="text-white/50 text-xs flex-shrink-0 ml-2 font-medium">${timeStr}</span>
                     </div>
-                    <div class="flex items-center justify-between gap-2">
-                        <p class="text-white/60 text-sm truncate flex-1 leading-relaxed">${safeLastMessage}${contact.lastMessage.length > 40 ? '...' : ''}</p>
-                        ${contact.instanceName ? `<span class="text-[#FCD535]/70 text-[10px] px-2 py-0.5 rounded-full bg-[#FCD535]/10 flex-shrink-0 whitespace-nowrap font-medium">${safeInstanceName}</span>` : ''}
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <p class="text-white/60 text-sm truncate flex-1 leading-relaxed">${safeMessageBody}${messageBody.length > 60 ? '...' : ''}</p>
+                        ${msg.instance?.name ? `<span class="text-[#FCD535]/70 text-[10px] px-2 py-0.5 rounded-full bg-[#FCD535]/10 flex-shrink-0 whitespace-nowrap font-medium">${safeInstanceName}</span>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-white/40 text-[10px] px-2 py-0.5 rounded ${isInbound ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'}">${isInbound ? 'Incoming' : 'Outgoing'}</span>
+                        <span class="text-white/40 text-[10px]">${msg.status || 'sent'}</span>
                     </div>
                 </div>
             </div>
@@ -396,29 +419,33 @@ function renderContactsList() {
     }).join('');
 }
 
-// Select contact and show chat
-function selectContact(phoneNumber, jid, instanceId, instanceName) {
-    selectedContact = { phoneNumber, jid, instanceId, instanceName };
+// Select message and show chat
+function selectMessage(messageId, jid, instanceId, instanceName) {
+    // Find the selected message
+    const message = allMessages.find(m => m.id === messageId);
+    if (!message) return;
     
-    currentChatPhone = jid || phoneNumber;
+    selectedMessage = message;
+    
+    // Extract contact info from message
+    const contactJID = message.direction === 'inbound' ? message.from : message.to;
+    const phoneNumber = extractPhoneNumber(contactJID);
+    
+    if (!phoneNumber) return;
+    
+    currentChatPhone = contactJID;
     currentChatInstanceId = instanceId;
     
-    // Extract and format phone number
-    let cleanPhone = phoneNumber;
-    if (jid && jid.includes('@')) {
-        cleanPhone = extractPhoneNumber(jid) || phoneNumber;
-    }
-    
-    const formattedPhone = formatPhoneNumber(cleanPhone);
+    const formattedPhone = formatPhoneNumber(phoneNumber);
     
     // Update chat header
     document.getElementById('activeContactName').textContent = formattedPhone;
     document.getElementById('activeContactPhone').textContent = formattedPhone;
-    document.getElementById('activeContactInitial').textContent = cleanPhone.slice(-1) || '?';
+    document.getElementById('activeContactInitial').textContent = phoneNumber.slice(-1) || '?';
     
     // Set form values
     document.getElementById('chatInstanceId').value = instanceId;
-    document.getElementById('chatToPhone').value = jid || phoneNumber;
+    document.getElementById('chatToPhone').value = contactJID;
     
     // Show chat area, hide empty state
     document.getElementById('emptyChatState').classList.add('hidden');
@@ -426,11 +453,11 @@ function selectContact(phoneNumber, jid, instanceId, instanceName) {
     document.getElementById('chatMessagesArea').classList.remove('hidden');
     document.getElementById('chatInputArea').classList.remove('hidden');
     
-    // Load messages
-    loadChatMessages(jid || phoneNumber, instanceId);
+    // Load messages for this contact
+    loadChatMessages(contactJID, instanceId);
     
-    // Re-render contacts to show selection
-    renderContactsList();
+    // Re-render messages list to show selection
+    renderMessagesList();
 }
 
 // Refresh chat manually
@@ -626,10 +653,10 @@ document.getElementById('chatReplyForm').addEventListener('submit', async (e) =>
             messageInput.value = '';
             removeImagePreview();
             
-            // Reload messages and contacts
+            // Reload messages and messages list
             setTimeout(() => {
                 loadChatMessages(currentChatPhone, currentChatInstanceId);
-                loadContacts(); // Refresh contacts list
+                loadMessages(); // Refresh messages list
             }, 500);
         } else {
             alert(data.error?.message || 'Failed to send message');
@@ -643,19 +670,19 @@ document.getElementById('chatReplyForm').addEventListener('submit', async (e) =>
     }
 });
 
-// Search contacts
-document.getElementById('contactSearch')?.addEventListener('input', (e) => {
-    loadContacts();
+// Search messages
+document.getElementById('messageSearch')?.addEventListener('input', (e) => {
+    loadMessages();
 });
 
 // Filter by instance
 document.getElementById('filterInstance')?.addEventListener('change', () => {
-    loadContacts();
+    loadMessages();
 });
 
-// Load contacts on page load
+// Load messages on page load
 document.addEventListener('DOMContentLoaded', () => {
-    loadContacts();
+    loadMessages();
 });
 
 </script>
