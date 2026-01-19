@@ -156,8 +156,27 @@ console.log('Messages page initialized. Variables:', {
 });
 
 // Check if JID is a group
+// @g.us is always a group
+// @lid can be private messages (WhatsApp service already filters groups before sending to Laravel)
 function isGroupJID(jid) {
-    return jid && (jid.includes('@g.us') || jid.includes('@lid'));
+    if (!jid) return false;
+    
+    // @g.us is always a group
+    if (jid.includes('@g.us')) {
+        return true;
+    }
+    
+    // @lid can be private messages, but if ID is very long (>15 digits), it's likely a group
+    // WhatsApp service already filters groups, so we trust @lid messages from backend
+    // Only filter @lid if it's clearly a group (very long ID)
+    if (jid.includes('@lid')) {
+        const idPart = jid.split('@')[0];
+        // If ID is longer than 15 digits, it's likely a group
+        const isLongId = idPart && idPart.length > 15;
+        return isLongId;
+    }
+    
+    return false;
 }
 
 // Extract phone number from JID (only for private chats)

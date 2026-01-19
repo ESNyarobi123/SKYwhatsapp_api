@@ -134,17 +134,16 @@ class MessageController extends Controller
         \Log::info('Messages before group filter: '.$beforeFilterCount);
 
         // Filter out group messages - only show private messages
-        // Groups have @g.us or @lid in the JID
-        // Message should not be from a group AND should not be to a group
+        // Groups have @g.us suffix (always groups)
+        // @lid can be private messages (WhatsApp service already filters groups before sending)
+        // Only filter @g.us, allow @lid as WhatsApp service handles group filtering
         $query->where(function ($q) {
             $q->where(function ($subQ) {
-                // from field should not contain group identifiers
-                $subQ->where('from', 'not like', '%@g.us')
-                    ->where('from', 'not like', '%@lid');
+                // from field should not contain @g.us (always groups)
+                $subQ->where('from', 'not like', '%@g.us');
             })->where(function ($subQ) {
-                // to field should not contain group identifiers
-                $subQ->where('to', 'not like', '%@g.us')
-                    ->where('to', 'not like', '%@lid');
+                // to field should not contain @g.us (always groups)
+                $subQ->where('to', 'not like', '%@g.us');
             });
         });
 
