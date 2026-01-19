@@ -252,17 +252,47 @@ function formatPhoneNumber(phone) {
         return (hasPlus ? '+' : '') + country + ' ' + operator + ' ' + rest.match(/.{1,3}/g)?.join(' ') || rest;
     }
     
-    // Handle other country codes starting with 8xx (might be Tanzanian or other)
-    if (numOnly.length >= 12 && numOnly.startsWith('8')) {
-        // Format: 898 164 232 602 22 (for 898... numbers)
-        // Split into groups of 3 digits
+    // Try to detect if number might be Tanzania format (255...)
+    // If it starts with 255 and is 12-15 digits, format as Tanzania number
+    if (numOnly.length >= 12 && numOnly.startsWith('255')) {
+        // Tanzanian number with country code
+        const country = numOnly.substring(0, 3);
+        const operator = numOnly.substring(3, 6);
+        const rest = numOnly.substring(6);
+        return (hasPlus ? '+' : '') + country + ' ' + operator + ' ' + rest.match(/.{1,3}/g)?.join(' ') || rest;
+    }
+    
+    // Handle numbers starting with 898 (might be special format - WhatsApp LID format)
+    // These might not be real phone numbers, but format them nicely anyway
+    if (numOnly.length >= 12 && numOnly.startsWith('898')) {
+        // 898... is likely a special WhatsApp format
+        // Format as: 898 164 232 602 22 (split into groups of 3, last group can be 2 digits)
+        if (numOnly.length === 14) {
+            // 89816423260222 → 898 164 232 602 22
+            return numOnly.substring(0, 3) + ' ' + 
+                   numOnly.substring(3, 6) + ' ' + 
+                   numOnly.substring(6, 9) + ' ' + 
+                   numOnly.substring(9, 12) + ' ' + 
+                   numOnly.substring(12);
+        }
+        // Generic formatting for other lengths
         return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
     }
     
-    // Handle numbers starting with 1 and length 13-15 (might be international)
+    // Handle numbers starting with 1 and length 13-15 (might be special format)
     if (numOnly.length >= 13 && numOnly.length <= 15 && numOnly.startsWith('1')) {
-        // Format: 1 655 158 761 515 25
-        // Split into groups of 3 digits
+        // 165515876151525 (15 digits) - might be special format
+        // Format as: 1 655 158 761 515 25 (split into groups, last group can be 2 digits)
+        if (numOnly.length === 15) {
+            // 165515876151525 → 1 655 158 761 515 25
+            return numOnly.substring(0, 1) + ' ' + 
+                   numOnly.substring(1, 4) + ' ' + 
+                   numOnly.substring(4, 7) + ' ' + 
+                   numOnly.substring(7, 10) + ' ' + 
+                   numOnly.substring(10, 13) + ' ' + 
+                   numOnly.substring(13);
+        }
+        // Generic formatting for other lengths
         return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
     }
     
@@ -612,31 +642,42 @@ function renderMessagesList() {
             
             // Extract and format phone number
             if (!phoneNumber) {
-                console.warn(`Message ${index + 1}: Failed to extract phone number:`, {
+                // Try to extract from JID directly if extraction failed
+                const rawJID = contactJID ? contactJID.replace(/@.*$/, '') : '';
+                const cleanedJID = rawJID.replace(/[^\d+]/g, '');
+                
+                console.warn(`Message ${index + 1}: Failed to extract phone number, using JID:`, {
                     id: msg.id,
                     jid: contactJID,
+                    rawJID: rawJID,
+                    cleanedJID: cleanedJID,
                     direction: msg.direction,
                     from: msg.from,
                     to: msg.to,
                     extractedPhone: phoneNumber
                 });
-                // Still render the message, but use JID or a fallback
-                const fallbackPhone = contactJID ? contactJID.replace(/@.*$/, '') : 'Unknown';
-                formattedPhone = formatPhoneNumber(fallbackPhone) || fallbackPhone || 'Unknown';
-                phoneLastDigit = fallbackPhone ? fallbackPhone.slice(-1) : '?';
+                
+                // Try to format the cleaned JID
+                if (cleanedJID && cleanedJID.length <= 16) {
+                    formattedPhone = formatPhoneNumber(cleanedJID) || cleanedJID;
+                    phoneLastDigit = cleanedJID.slice(-1) || '?';
+                } else {
+                    // Last resort: show shortened version
+                    formattedPhone = rawJID.substring(0, 15) + (rawJID.length > 15 ? '...' : '') || 'Unknown';
+                    phoneLastDigit = rawJID.slice(-1) || '?';
+                }
             } else {
                 // Format the extracted phone number
                 formattedPhone = formatPhoneNumber(phoneNumber);
                 phoneLastDigit = phoneNumber.slice(-1) || '?';
                 
                 // Debug log for phone number formatting
-                if (contactJID && contactJID.includes('@lid')) {
-                    console.log(`Message ${index + 1}: @lid format`, {
-                        jid: contactJID,
-                        extracted: phoneNumber,
-                        formatted: formattedPhone
-                    });
-                }
+                console.log(`Message ${index + 1}: Phone number formatted`, {
+                    jid: contactJID,
+                    extracted: phoneNumber,
+                    formatted: formattedPhone,
+                    length: phoneNumber.length
+                });
             }
             
             // Continue with rendering
