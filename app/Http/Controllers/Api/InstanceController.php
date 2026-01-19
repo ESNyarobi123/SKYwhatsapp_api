@@ -322,37 +322,56 @@ class InstanceController extends Controller
             ], 403);
         }
 
-        // Stop first
+        // Refresh instance to get latest data
+        $instance->refresh();
+        
+        // Store session_data status BEFORE stop (to preserve it)
+        $hasSession = !empty($instance->session_data);
+
+        // Stop first (but preserve session_data - it's NOT cleared)
         if ($instance->status !== 'disconnected') {
             $this->instanceService->updateStatus($instance, 'disconnected');
+            // Clear QR code but KEEP session_data (don't touch it!)
             $instance->update([
                 'qr_code' => null,
                 'qr_expires_at' => null,
+                // session_data is NOT in the update array - it stays!
             ]);
             $this->instanceService->notifyInstanceStop($instance->fresh());
         }
 
         // Small delay to ensure stop is processed
-        sleep(1);
+        usleep(500000); // 0.5 seconds
+
+        // Refresh instance again to get latest session_data
+        $instance->refresh();
 
         // Then start
-        if ($instance->session_data) {
+        if ($hasSession && $instance->session_data) {
+            // Has session - reconnect without QR
             $this->instanceService->updateStatus($instance, 'connecting');
             $this->instanceService->notifyInstanceStart($instance->fresh());
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'instance' => $instance->fresh(),
+                ],
+                'message' => 'Instance restart initiated. Reconnecting with existing session...',
+            ]);
         } else {
+            // No session - need new QR code
             $this->instanceService->updateStatus($instance, 'connecting');
             $this->instanceService->notifyConnectionRequest($instance->fresh());
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'instance' => $instance->fresh(),
+                ],
+                'message' => 'Instance restart initiated. QR code will be available shortly.',
+            ]);
         }
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'instance' => $instance->fresh(),
-            ],
-            'message' => 'Instance restart initiated. ' . ($instance->session_data 
-                ? 'Reconnecting with existing session...' 
-                : 'QR code will be available shortly.'),
-        ]);
     }
 
     /**

@@ -115,12 +115,12 @@
 </div>
 
 <!-- WhatsApp-like Chat Modal -->
-<div id="chatModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-[#0B141A] border border-white/10 rounded-lg w-full max-w-4xl h-[85vh] mx-4 flex flex-col">
+<div id="chatModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-[#0B141A] border border-white/20 rounded-lg w-full max-w-4xl h-[85vh] mx-4 flex flex-col shadow-2xl" style="background-color: #0B141A !important;">
         <!-- Chat Header -->
-        <div class="bg-[#202C33] px-6 py-4 flex items-center justify-between border-b border-white/10">
+        <div class="bg-[#202C33] px-6 py-4 flex items-center justify-between border-b border-white/10" style="background-color: #202C33 !important;">
             <div class="flex items-center space-x-3">
-                <button onclick="closeChatModal()" class="text-white/70 hover:text-white">
+                <button onclick="closeChatModal()" class="text-white/70 hover:text-white transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
@@ -136,7 +136,7 @@
         </div>
 
         <!-- Messages Area (WhatsApp-like) -->
-        <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-2 bg-[#0B141A]">
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-2" style="background-color: #0B141A !important; background-image: url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.02\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');">
             <div class="flex items-center justify-center py-8">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div>
                 <p class="ml-3 text-white/70">Loading messages...</p>
@@ -144,7 +144,7 @@
         </div>
 
         <!-- Message Input Area -->
-        <div class="bg-[#202C33] px-4 py-3 border-t border-white/10">
+        <div class="bg-[#202C33] px-4 py-3 border-t border-white/10" style="background-color: #202C33 !important;">
             <form id="chatReplyForm" class="flex items-end space-x-2">
                 <input type="hidden" id="chatInstanceId" name="instance_id">
                 <input type="hidden" id="chatToPhone" name="to">
@@ -223,12 +223,38 @@ function extractPhoneNumber(jid) {
 // Format phone number for display
 function formatPhoneNumber(phone) {
     if (!phone) return 'Unknown';
+    
+    // Remove any non-digit characters except +
+    let digits = phone.replace(/[^\d+]/g, '');
+    
     // If it's a group ID (long number), return as is
-    if (phone.length > 15) return phone;
-    // Format: +255 712 345 678
-    if (phone.startsWith('+')) {
-        return phone.replace(/(\+?\d{3})(\d{3})(\d{3})(\d+)/, '$1 $2 $3 $4');
+    if (digits.length > 15) return phone;
+    
+    const hasPlus = digits.startsWith('+');
+    const numOnly = hasPlus ? digits.substring(1) : digits;
+    
+    // Handle Tanzanian numbers (255...)
+    if (numOnly.length >= 12 && numOnly.startsWith('255')) {
+        // Format: +255 712 345 678
+        const country = numOnly.substring(0, 3);
+        const operator = numOnly.substring(3, 6);
+        const rest = numOnly.substring(6);
+        return (hasPlus ? '+' : '') + country + ' ' + operator + ' ' + rest.match(/.{1,3}/g)?.join(' ') || rest;
     }
+    
+    // Handle local Tanzanian numbers (07... or 06...)
+    if (numOnly.length >= 9 && (numOnly.startsWith('07') || numOnly.startsWith('06'))) {
+        // Format: 0712 345 678
+        const operator = numOnly.substring(0, 3);
+        const rest = numOnly.substring(3);
+        return operator + ' ' + rest.match(/.{1,3}/g)?.join(' ') || rest;
+    }
+    
+    // Format other numbers
+    if (numOnly.length >= 10) {
+        return (hasPlus ? '+' : '') + numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
+    }
+    
     return phone;
 }
 
@@ -236,11 +262,18 @@ function openChat(phoneNumber, instanceId) {
     currentChatPhone = phoneNumber;
     currentChatInstanceId = instanceId;
     
+    // Extract and format phone number properly
+    let cleanPhone = phoneNumber;
+    if (phoneNumber.includes('@')) {
+        // Extract from JID
+        cleanPhone = phoneNumber.replace(/@.*$/, '').replace(/[^\d+]/g, '');
+    }
+    
     // Update chat header
-    const formattedPhone = formatPhoneNumber(phoneNumber);
+    const formattedPhone = formatPhoneNumber(cleanPhone);
     document.getElementById('chatContactName').textContent = formattedPhone;
     document.getElementById('chatContactPhone').textContent = formattedPhone;
-    document.getElementById('chatContactInitial').textContent = phoneNumber.slice(-1) || '?';
+    document.getElementById('chatContactInitial').textContent = cleanPhone.slice(-1) || '?';
     
     // Set form values
     document.getElementById('chatInstanceId').value = instanceId;
@@ -281,11 +314,25 @@ function loadChatMessages(phoneNumber, instanceId) {
             const messages = data.data.messages || [];
             
             // Filter messages for this contact
+            // Normalize phone numbers for comparison
+            const normalizePhone = (phone) => {
+                if (!phone) return '';
+                // Remove @ and extract digits
+                let cleaned = phone.replace(/@.*$/, '').replace(/[^\d+]/g, '');
+                // Remove leading + for comparison
+                return cleaned.replace(/^\+/, '');
+            };
+            
+            const normalizedCurrentPhone = normalizePhone(phoneNumber);
+            
             const contactMessages = messages.filter(msg => {
                 const msgPhone = msg.direction === 'inbound' 
                     ? extractPhoneNumber(msg.from)
                     : extractPhoneNumber(msg.to);
-                return msgPhone === phoneNumber;
+                const normalizedMsgPhone = normalizePhone(msgPhone);
+                return normalizedMsgPhone === normalizedCurrentPhone || 
+                       msgPhone === phoneNumber || 
+                       (msg.direction === 'inbound' ? msg.from : msg.to) === phoneNumber;
             });
             
             // Sort by created_at (oldest first)

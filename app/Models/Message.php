@@ -55,22 +55,62 @@ class Message extends Model
      */
     public function extractPhoneNumber(string $jid): ?string
     {
+        if (empty($jid)) {
+            return null;
+        }
+        
         // Remove @lid, @g.us, @s.whatsapp.net, etc.
         $phoneNumber = preg_replace('/@.*$/', '', $jid);
         
         // Remove any non-digit characters except +
         $phoneNumber = preg_replace('/[^\d+]/', '', $phoneNumber);
         
-        // If it starts with +, keep it, otherwise format it
         if (empty($phoneNumber)) {
             return null;
         }
         
-        // If it's a group ID (starts with many digits), return as is
+        // If it's a group ID (starts with many digits, usually 15+), return as is
         if (strlen($phoneNumber) > 15) {
             return $phoneNumber;
         }
         
+        // Format phone number for display
+        return $this->formatPhoneNumber($phoneNumber);
+    }
+
+    /**
+     * Format phone number for display.
+     */
+    private function formatPhoneNumber(string $phoneNumber): string
+    {
+        // Remove leading + if exists for processing
+        $hasPlus = str_starts_with($phoneNumber, '+');
+        $digits = $hasPlus ? substr($phoneNumber, 1) : $phoneNumber;
+        
+        // Handle Tanzanian numbers (255...)
+        if (strlen($digits) >= 12 && str_starts_with($digits, '255')) {
+            // Format: +255 712 345 678
+            $country = substr($digits, 0, 3);
+            $operator = substr($digits, 3, 3);
+            $rest = substr($digits, 6);
+            return ($hasPlus ? '+' : '') . $country . ' ' . $operator . ' ' . $rest;
+        }
+        
+        // Handle local Tanzanian numbers (07... or 06...)
+        if (strlen($digits) >= 9 && (str_starts_with($digits, '07') || str_starts_with($digits, '06'))) {
+            // Format: 0712 345 678
+            $operator = substr($digits, 0, 3);
+            $rest = substr($digits, 3);
+            return $operator . ' ' . chunk_split($rest, 3, ' ');
+        }
+        
+        // Handle other formats
+        if (strlen($digits) >= 10) {
+            // Try to format as: XXX XXX XXXX
+            return ($hasPlus ? '+' : '') . chunk_split($digits, 3, ' ');
+        }
+        
+        // Return as is if can't format
         return $phoneNumber;
     }
 
@@ -92,10 +132,12 @@ class Message extends Model
     public function getContactPhoneNumberAttribute(): string
     {
         if ($this->direction === 'inbound') {
-            return $this->extractPhoneNumber($this->from) ?? $this->from;
+            $phone = $this->extractPhoneNumber($this->from);
+            return $phone ?? $this->from;
         }
         
-        return $this->extractPhoneNumber($this->to) ?? $this->to;
+        $phone = $this->extractPhoneNumber($this->to);
+        return $phone ?? $this->to;
     }
 
     /**
