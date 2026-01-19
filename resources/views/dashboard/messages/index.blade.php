@@ -149,6 +149,12 @@ let filteredMessages = [];
 let selectedMessage = null;
 let selectedContact = null;
 
+// Debug: Log initial state
+console.log('Messages page initialized. Variables:', {
+    allMessages: allMessages.length,
+    filteredMessages: filteredMessages.length
+});
+
 // Check if JID is a group
 function isGroupJID(jid) {
     return jid && (jid.includes('@g.us') || jid.includes('@lid'));
@@ -379,18 +385,23 @@ function loadMessages(silent = false) {
             // Update allMessages
             allMessages = newAllMessages;
             
-            // Filter by search term
-            filteredMessages = allMessages.filter(msg => {
-                const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
-                const phoneNumber = extractPhoneNumber(contactJID);
-                const formattedPhone = phoneNumber ? formatPhoneNumber(phoneNumber) : '';
-                const messageBody = msg.body || '';
-                const instanceName = msg.instance?.name || '';
-                
-                return formattedPhone.toLowerCase().includes(searchTerm) || 
-                       messageBody.toLowerCase().includes(searchTerm) ||
-                       instanceName.toLowerCase().includes(searchTerm);
-            });
+            // Filter by search term (only if search term exists, otherwise show all)
+            if (searchTerm && searchTerm.trim() !== '') {
+                filteredMessages = allMessages.filter(msg => {
+                    const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
+                    const phoneNumber = extractPhoneNumber(contactJID);
+                    const formattedPhone = phoneNumber ? formatPhoneNumber(phoneNumber) : (contactJID ? contactJID.replace(/@.*$/, '') : '');
+                    const messageBody = msg.body || '';
+                    const instanceName = msg.instance?.name || '';
+                    
+                    return formattedPhone.toLowerCase().includes(searchTerm) || 
+                           messageBody.toLowerCase().includes(searchTerm) ||
+                           instanceName.toLowerCase().includes(searchTerm);
+                });
+            } else {
+                // No search term - show all messages
+                filteredMessages = allMessages;
+            }
             
             console.log('Filtered messages after search:', filteredMessages.length);
             
@@ -413,6 +424,15 @@ function loadMessages(silent = false) {
             
             // Sort by created_at (newest first)
             filteredMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            
+            console.log('About to render messages. filteredMessages count:', filteredMessages.length);
+            console.log('First 3 filtered messages:', filteredMessages.slice(0, 3));
+            
+            // Safety check: If filteredMessages is empty but we have messages, use allMessages
+            if (filteredMessages.length === 0 && allMessages.length > 0) {
+                console.warn('filteredMessages is empty but allMessages has items. Using allMessages as fallback.');
+                filteredMessages = allMessages;
+            }
             
             // Re-render messages list
             renderMessagesList();
@@ -465,7 +485,15 @@ function loadMessages(silent = false) {
 function renderMessagesList() {
     const messagesList = document.getElementById('messagesList');
     
+    console.log('renderMessagesList called');
+    console.log('filteredMessages length:', filteredMessages?.length || 0);
+    console.log('filteredMessages:', filteredMessages);
+    console.log('allMessages length:', allMessages?.length || 0);
+    
     if (!filteredMessages || filteredMessages.length === 0) {
+        console.warn('No filtered messages to display');
+        console.log('allMessages:', allMessages);
+        console.log('filteredMessages:', filteredMessages);
         messagesList.innerHTML = `
             <div class="flex flex-col items-center justify-center py-16 px-4">
                 <div class="w-20 h-20 rounded-full bg-[#FCD535]/10 flex items-center justify-center mb-4">
@@ -482,79 +510,95 @@ function renderMessagesList() {
         return;
     }
     
-    messagesList.innerHTML = filteredMessages.map(msg => {
-        // Extract contact info
-        const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
-        const phoneNumber = extractPhoneNumber(contactJID);
-        
-        // Declare variables outside if/else block
-        let formattedPhone;
-        let phoneLastDigit;
-        
-        // Log if phone number extraction fails
-        if (!phoneNumber || phoneNumber.length > 15) {
-            console.warn('Failed to extract phone number for message:', {
-                id: msg.id,
-                jid: contactJID,
-                direction: msg.direction,
-                from: msg.from,
-                to: msg.to
-            });
-            // Still render the message, but use JID or a fallback
-            const fallbackPhone = contactJID ? contactJID.replace(/@.*$/, '').substring(0, 15) : 'Unknown';
-            formattedPhone = fallbackPhone;
-            phoneLastDigit = fallbackPhone.slice(-1) || '?';
-        } else {
-            formattedPhone = formatPhoneNumber(phoneNumber);
-            phoneLastDigit = phoneNumber.slice(-1) || '?';
-        }
-        
-        // Continue with rendering
-        const messageTime = new Date(msg.created_at);
-        const timeStr = messageTime.toLocaleDateString() === new Date().toLocaleDateString()
-            ? messageTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-            : messageTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        
-        const isSelected = selectedMessage && selectedMessage.id === msg.id;
-        const isInbound = msg.direction === 'inbound';
-        const messageBody = msg.body || '[Media]';
-        const safeMessageBody = escapeHtml(messageBody.substring(0, 50));
-        const safeInstanceName = escapeHtml(msg.instance?.name || 'Unknown');
-        // phoneLastDigit already assigned above
-        
-        // Direction indicator
-        const directionIcon = isInbound 
-            ? '<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
-            : '<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>';
-        
-        return `
-            <div 
-                class="flex items-start space-x-3 p-3 hover:bg-white/5 cursor-pointer transition-all duration-150 border-b border-white/5 ${isSelected ? 'bg-[#202C33] border-l-4 border-l-[#FCD535]' : 'hover:border-l-4 hover:border-l-white/10'}"
-                onclick="selectMessage(${msg.id}, '${contactJID.replace(/'/g, "\\'")}', ${msg.instance_id}, '${safeInstanceName.replace(/'/g, "\\'")}')"
-            >
-                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[#FCD535]/30 to-[#FCD535]/10 flex items-center justify-center flex-shrink-0 ring-2 ring-[#FCD535]/20">
-                    <span class="text-[#FCD535] font-bold text-sm">${phoneLastDigit}</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between mb-1.5">
-                        <div class="flex items-center gap-2">
-                            <h4 class="text-white font-semibold text-[15px] truncate">${formattedPhone}</h4>
-                            ${directionIcon}
+    console.log('Rendering', filteredMessages.length, 'messages');
+    
+    const htmlContent = filteredMessages.map((msg, index) => {
+        try {
+            // Extract contact info
+            const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
+            const phoneNumber = extractPhoneNumber(contactJID);
+            
+            // Declare variables outside if/else block
+            let formattedPhone;
+            let phoneLastDigit;
+            
+            // Log if phone number extraction fails
+            if (!phoneNumber || phoneNumber.length > 15) {
+                console.warn(`Message ${index + 1}: Failed to extract phone number:`, {
+                    id: msg.id,
+                    jid: contactJID,
+                    direction: msg.direction,
+                    from: msg.from,
+                    to: msg.to,
+                    extractedPhone: phoneNumber
+                });
+                // Still render the message, but use JID or a fallback
+                const fallbackPhone = contactJID ? contactJID.replace(/@.*$/, '').substring(0, 15) : 'Unknown';
+                formattedPhone = fallbackPhone || 'Unknown';
+                phoneLastDigit = fallbackPhone ? fallbackPhone.slice(-1) : '?';
+            } else {
+                formattedPhone = formatPhoneNumber(phoneNumber);
+                phoneLastDigit = phoneNumber.slice(-1) || '?';
+            }
+            
+            // Continue with rendering
+            const messageTime = new Date(msg.created_at);
+            const timeStr = messageTime.toLocaleDateString() === new Date().toLocaleDateString()
+                ? messageTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                : messageTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            const isSelected = selectedMessage && selectedMessage.id === msg.id;
+            const isInbound = msg.direction === 'inbound';
+            const messageBody = msg.body || '[Media]';
+            const safeMessageBody = escapeHtml(messageBody.substring(0, 50));
+            const safeInstanceName = escapeHtml(msg.instance?.name || 'Unknown');
+            
+            // Direction indicator
+            const directionIcon = isInbound 
+                ? '<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+                : '<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>';
+            
+            return `
+                <div 
+                    class="flex items-start space-x-3 p-3 hover:bg-white/5 cursor-pointer transition-all duration-150 border-b border-white/5 ${isSelected ? 'bg-[#202C33] border-l-4 border-l-[#FCD535]' : 'hover:border-l-4 hover:border-l-white/10'}"
+                    onclick="selectMessage(${msg.id}, '${contactJID.replace(/'/g, "\\'")}', ${msg.instance_id}, '${safeInstanceName.replace(/'/g, "\\'")}')"
+                >
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[#FCD535]/30 to-[#FCD535]/10 flex items-center justify-center flex-shrink-0 ring-2 ring-[#FCD535]/20">
+                        <span class="text-[#FCD535] font-bold text-sm">${phoneLastDigit}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-white font-semibold text-[15px] truncate">${formattedPhone}</h4>
+                                ${directionIcon}
+                            </div>
+                            <span class="text-white/50 text-xs flex-shrink-0 ml-2 font-medium">${timeStr}</span>
                         </div>
-                        <span class="text-white/50 text-xs flex-shrink-0 ml-2 font-medium">${timeStr}</span>
-                    </div>
-                    <div class="flex items-center justify-between gap-2 mb-1">
-                        <p class="text-white/60 text-sm truncate flex-1 leading-relaxed">${safeMessageBody}${messageBody.length > 50 ? '...' : ''}</p>
-                        ${msg.instance?.name ? `<span class="text-[#FCD535]/70 text-[10px] px-2 py-0.5 rounded-full bg-[#FCD535]/10 flex-shrink-0 whitespace-nowrap font-medium">${safeInstanceName}</span>` : ''}
-                    </div>
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="text-white/40 text-[10px] px-2 py-0.5 rounded ${isInbound ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'}">${isInbound ? 'Incoming' : 'Outgoing'}</span>
-                        <span class="text-white/40 text-[10px]">${msg.status || 'sent'}</span>
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            <p class="text-white/60 text-sm truncate flex-1 leading-relaxed">${safeMessageBody}${messageBody.length > 50 ? '...' : ''}</p>
+                            ${msg.instance?.name ? `<span class="text-[#FCD535]/70 text-[10px] px-2 py-0.5 rounded-full bg-[#FCD535]/10 flex-shrink-0 whitespace-nowrap font-medium">${safeInstanceName}</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-white/40 text-[10px] px-2 py-0.5 rounded ${isInbound ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'}">${isInbound ? 'Incoming' : 'Outgoing'}</span>
+                            <span class="text-white/40 text-[10px]">${msg.status || 'sent'}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        } catch (error) {
+            console.error(`Error rendering message ${index + 1}:`, error, msg);
+            return '';
+        }
+    }).filter(html => html !== '').join('');
+    
+    console.log('Generated HTML length:', htmlContent.length);
+    console.log('First 500 chars of HTML:', htmlContent.substring(0, 500));
+    
+    messagesList.innerHTML = htmlContent;
+    
+    if (htmlContent.length === 0) {
+        console.error('No HTML generated from messages!');
+    }
 }
 
 // Back to messages list
