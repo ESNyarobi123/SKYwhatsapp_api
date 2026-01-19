@@ -194,8 +194,11 @@ function extractPhoneNumber(jid) {
     // Remove any non-digit characters except +
     phone = phone.replace(/[^\d+]/g, '');
     
-    // If phone is too long (group ID), return null
-    if (phone && phone.length > 15) {
+    // For @lid format, extract the number part (can be 10-16 digits for phone numbers)
+    // Group IDs are typically 16+ digits, so allow up to 16 digits
+    // Some international numbers can be up to 16 digits
+    if (phone && phone.length > 16) {
+        // If it's longer than 16 digits, it's likely a group ID
         return null;
     }
     
@@ -212,22 +215,23 @@ function extractPhoneNumber(jid) {
 function formatPhoneNumber(phone) {
     if (!phone) return 'Unknown';
     
-    // If phone is a long number (likely group ID or invalid), show shortened
-    if (phone.length > 20) {
-        return phone.substring(0, 15) + '...';
-    }
-    
     // Remove any non-digit characters except +
     let digits = phone.replace(/[^\d+]/g, '');
     
-    // If it's too long after cleaning, it's likely invalid
+    // If it's too long after cleaning, try to extract valid phone number
+    if (digits.length > 16) {
+        // Likely a group ID or invalid - show shortened
+        return digits.substring(0, 15) + '...';
+    }
+    
+    // If still too long but <= 16, try to format it
     if (digits.length > 15) {
-        // Try to extract last 9-12 digits as phone number
+        // Might be a long international number - try to extract last 12 digits
         const lastDigits = digits.slice(-12);
         if (lastDigits.length >= 9) {
             digits = lastDigits;
         } else {
-            return phone.substring(0, 15) + '...';
+            // Keep original if we can't extract a valid number
         }
     }
     
@@ -235,11 +239,11 @@ function formatPhoneNumber(phone) {
     const numOnly = hasPlus ? digits.substring(1) : digits;
     
     // Skip if still too long
-    if (numOnly.length > 15) {
-        return phone.substring(0, 15) + '...';
+    if (numOnly.length > 16) {
+        return digits.substring(0, 15) + '...';
     }
     
-    // Handle Tanzanian numbers (255...)
+    // Handle Tanzanian numbers with country code (255...)
     if (numOnly.length >= 12 && numOnly.startsWith('255')) {
         // Format: +255 712 345 678
         const country = numOnly.substring(0, 3);
@@ -248,12 +252,42 @@ function formatPhoneNumber(phone) {
         return (hasPlus ? '+' : '') + country + ' ' + operator + ' ' + rest.match(/.{1,3}/g)?.join(' ') || rest;
     }
     
+    // Handle other country codes starting with 8xx (might be Tanzanian or other)
+    if (numOnly.length >= 12 && numOnly.startsWith('8')) {
+        // Format: 898 164 232 602 22 (for 898... numbers)
+        // Split into groups of 3 digits
+        return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
+    }
+    
+    // Handle numbers starting with 1 and length 13-15 (might be international)
+    if (numOnly.length >= 13 && numOnly.length <= 15 && numOnly.startsWith('1')) {
+        // Format: 1 655 158 761 515 25
+        // Split into groups of 3 digits
+        return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
+    }
+    
     // Handle local Tanzanian numbers (07... or 06...)
-    if (numOnly.length >= 9 && (numOnly.startsWith('07') || numOnly.startsWith('06'))) {
+    if (numOnly.length >= 9 && numOnly.length <= 12 && (numOnly.startsWith('07') || numOnly.startsWith('06'))) {
         // Format: 0712 345 678
         const operator = numOnly.substring(0, 3);
         const rest = numOnly.substring(3);
         return operator + ' ' + rest.match(/.{1,3}/g)?.join(' ') || rest;
+    }
+    
+    // Handle other numbers with 10-15 digits
+    if (numOnly.length >= 10 && numOnly.length <= 15) {
+        // Try to format as international number
+        // If starts with country code pattern, format accordingly
+        if (numOnly.startsWith('1') && numOnly.length >= 11) {
+            // US/Canada or other 1-xxx numbers
+            return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
+        } else if (numOnly.startsWith('8') && numOnly.length >= 12) {
+            // Other 8xx country codes
+            return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
+        } else {
+            // Generic formatting: split into groups of 3
+            return numOnly.match(/.{1,3}/g)?.join(' ') || numOnly;
+        }
     }
     
     // Handle other international numbers
@@ -576,8 +610,8 @@ function renderMessagesList() {
             let formattedPhone;
             let phoneLastDigit;
             
-            // Log if phone number extraction fails
-            if (!phoneNumber || phoneNumber.length > 15) {
+            // Extract and format phone number
+            if (!phoneNumber) {
                 console.warn(`Message ${index + 1}: Failed to extract phone number:`, {
                     id: msg.id,
                     jid: contactJID,
@@ -587,12 +621,22 @@ function renderMessagesList() {
                     extractedPhone: phoneNumber
                 });
                 // Still render the message, but use JID or a fallback
-                const fallbackPhone = contactJID ? contactJID.replace(/@.*$/, '').substring(0, 15) : 'Unknown';
-                formattedPhone = fallbackPhone || 'Unknown';
+                const fallbackPhone = contactJID ? contactJID.replace(/@.*$/, '') : 'Unknown';
+                formattedPhone = formatPhoneNumber(fallbackPhone) || fallbackPhone || 'Unknown';
                 phoneLastDigit = fallbackPhone ? fallbackPhone.slice(-1) : '?';
             } else {
+                // Format the extracted phone number
                 formattedPhone = formatPhoneNumber(phoneNumber);
                 phoneLastDigit = phoneNumber.slice(-1) || '?';
+                
+                // Debug log for phone number formatting
+                if (contactJID && contactJID.includes('@lid')) {
+                    console.log(`Message ${index + 1}: @lid format`, {
+                        jid: contactJID,
+                        extracted: phoneNumber,
+                        formatted: formattedPhone
+                    });
+                }
             }
             
             // Continue with rendering
