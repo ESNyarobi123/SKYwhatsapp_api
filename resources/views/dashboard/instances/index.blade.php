@@ -51,18 +51,30 @@
                         @endif
                     </div>
 
-                    <div class="flex items-center space-x-3 pt-4 border-t border-white/5">
-                        @if($instance->status !== 'connected')
+                    <div class="flex items-center space-x-3 pt-4 border-t border-white/5 flex-wrap gap-2">
+                        @if($instance->status === 'connected')
+                            <button onclick="stopInstance({{ $instance->id }})" class="text-orange-400 hover:text-orange-300 text-sm font-medium transition-colors">
+                                Stop
+                            </button>
+                            <button onclick="restartInstance({{ $instance->id }})" class="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors">
+                                Restart
+                            </button>
+                        @elseif($instance->status === 'disconnected')
+                            <button onclick="startInstance({{ $instance->id }})" class="text-[#FCD535] hover:text-[#F0C420] text-sm font-medium transition-colors">
+                                Start
+                            </button>
                             <button onclick="connectInstance({{ $instance->id }})" class="text-[#FCD535] hover:text-[#F0C420] text-sm font-medium transition-colors">
                                 Connect
                             </button>
-                            @if($instance->qr_code)
-                                <button onclick="showQrCode({{ $instance->id }})" class="text-[#FCD535] hover:text-[#F0C420] text-sm font-medium transition-colors">
-                                    Show QR
-                                </button>
-                            @endif
+                        @elseif($instance->status === 'connecting')
+                            <button onclick="showQrCode({{ $instance->id }})" class="text-[#FCD535] hover:text-[#F0C420] text-sm font-medium transition-colors">
+                                Show QR
+                            </button>
+                            <button onclick="stopInstance({{ $instance->id }})" class="text-orange-400 hover:text-orange-300 text-sm font-medium transition-colors">
+                                Cancel
+                            </button>
                         @endif
-                        <form method="POST" action="{{ route('api.instances.destroy', $instance) }}" class="inline" onsubmit="return confirm('Are you sure you want to delete this instance?')">
+                        <form method="POST" action="{{ route('api.instances.destroy', $instance) }}" class="inline" onsubmit="return confirm('Are you sure you want to delete this instance? This will delete all messages.')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="text-[#EA3943] hover:text-[#D1323A] text-sm font-medium transition-colors">
@@ -169,6 +181,94 @@ function connectInstance(instanceId) {
         closeQrModal();
         alert('Failed to connect instance. Please try again.');
         console.error('Connection error:', error);
+    });
+}
+
+function stopInstance(instanceId) {
+    if (!confirm('Are you sure you want to stop this instance? Messages will be preserved.')) {
+        return;
+    }
+    
+    fetch(`/api/instances/${instanceId}/stop`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error?.message || 'Failed to stop instance');
+        }
+    })
+    .catch(error => {
+        alert('Failed to stop instance. Please try again.');
+        console.error('Stop error:', error);
+    });
+}
+
+function startInstance(instanceId) {
+    fetch(`/api/instances/${instanceId}/start`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // If no session data, show QR modal
+            if (data.data.instance.session_data === null) {
+                openQrModal(instanceId);
+                startQrPolling(instanceId);
+            } else {
+                // Has session, just reload to show connecting status
+                window.location.reload();
+            }
+        } else {
+            alert(data.error?.message || 'Failed to start instance');
+        }
+    })
+    .catch(error => {
+        alert('Failed to start instance. Please try again.');
+        console.error('Start error:', error);
+    });
+}
+
+function restartInstance(instanceId) {
+    if (!confirm('Are you sure you want to restart this instance? Messages will be preserved.')) {
+        return;
+    }
+    
+    fetch(`/api/instances/${instanceId}/restart`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // If no session data, show QR modal
+            if (data.data.instance.session_data === null) {
+                openQrModal(instanceId);
+                startQrPolling(instanceId);
+            } else {
+                // Has session, just reload to show connecting status
+                window.location.reload();
+            }
+        } else {
+            alert(data.error?.message || 'Failed to restart instance');
+        }
+    })
+    .catch(error => {
+        alert('Failed to restart instance. Please try again.');
+        console.error('Restart error:', error);
     });
 }
 

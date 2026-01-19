@@ -76,10 +76,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/instances/{instance}', [InstanceController::class, 'show'])->name('api.instances.show');
     Route::delete('/api/instances/{instance}', [InstanceController::class, 'destroy'])->name('api.instances.destroy');
     Route::post('/api/instances/{instance}/connect', [InstanceController::class, 'connect'])->name('api.instances.connect');
+    Route::post('/api/instances/{instance}/stop', [InstanceController::class, 'stop'])->name('api.instances.stop');
+    Route::post('/api/instances/{instance}/start', [InstanceController::class, 'start'])->name('api.instances.start');
+    Route::post('/api/instances/{instance}/restart', [InstanceController::class, 'restart'])->name('api.instances.restart');
     Route::get('/api/instances/{instance}/qr', [InstanceController::class, 'qr'])->name('api.instances.qr');
     
     Route::post('/api/api-keys', [ApiKeyController::class, 'store'])->name('api.api-keys.store');
     Route::delete('/api/api-keys/{api_key}', [ApiKeyController::class, 'destroy'])->name('api.api-keys.destroy');
+    
+    Route::post('/api/v1/messages/send', [MessageController::class, 'send'])->name('api.messages.send');
+    Route::get('/api/messages', [MessageController::class, 'index'])->name('api.messages.index');
+    Route::get('/api/messages/{message}', [MessageController::class, 'show'])->name('api.messages.show');
     
     Route::post('/api/webhooks', [WebhookController::class, 'store'])->name('api.webhooks.store');
     Route::put('/api/webhooks/{webhook}', [WebhookController::class, 'update'])->name('api.webhooks.update');

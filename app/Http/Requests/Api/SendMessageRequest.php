@@ -24,7 +24,8 @@ class SendMessageRequest extends FormRequest
         return [
             'instance_id' => ['required', 'exists:instances,id'],
             'to' => ['required', 'string', 'max:20'],
-            'body' => ['required', 'string', 'max:4096'],
+            'body' => ['nullable', 'string', 'max:4096'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:10240'], // 10MB max
             'metadata' => ['nullable', 'array'],
         ];
     }

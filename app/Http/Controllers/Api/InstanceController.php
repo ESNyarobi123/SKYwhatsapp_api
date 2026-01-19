@@ -213,6 +213,149 @@ class InstanceController extends Controller
     }
 
     /**
+     * Stop an instance (disconnect but keep session data).
+     */
+    public function stop(Request $request, Instance $instance): JsonResponse
+    {
+        if ($instance->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'UNAUTHORIZED',
+                    'message' => 'You do not own this instance.',
+                ],
+            ], 403);
+        }
+
+        if ($instance->status === 'disconnected') {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'ALREADY_STOPPED',
+                    'message' => 'Instance is already stopped.',
+                ],
+            ], 400);
+        }
+
+        // Update status to disconnected but keep session_data
+        // This allows reconnection without losing session
+        $this->instanceService->updateStatus($instance, 'disconnected');
+        
+        // Clear QR code but keep session_data
+        $instance->update([
+            'qr_code' => null,
+            'qr_expires_at' => null,
+        ]);
+
+        // Notify Node.js service to stop this instance
+        $this->instanceService->notifyInstanceStop($instance->fresh());
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'instance' => $instance->fresh(),
+            ],
+            'message' => 'Instance stopped successfully. Messages are preserved.',
+        ]);
+    }
+
+    /**
+     * Start an instance (reconnect using existing session or generate new QR).
+     */
+    public function start(Request $request, Instance $instance): JsonResponse
+    {
+        if ($instance->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'UNAUTHORIZED',
+                    'message' => 'You do not own this instance.',
+                ],
+            ], 403);
+        }
+
+        if ($instance->status === 'connected') {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'ALREADY_CONNECTED',
+                    'message' => 'Instance is already connected.',
+                ],
+            ], 400);
+        }
+
+        // If instance has session_data, try to reconnect
+        // Otherwise, generate new QR code
+        if ($instance->session_data) {
+            // Try to reconnect with existing session
+            $this->instanceService->updateStatus($instance, 'connecting');
+            $this->instanceService->notifyInstanceStart($instance->fresh());
+        } else {
+            // No session data, need new QR code
+            $this->instanceService->updateStatus($instance, 'connecting');
+            $this->instanceService->notifyConnectionRequest($instance->fresh());
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'instance' => $instance->fresh(),
+            ],
+            'message' => $instance->session_data 
+                ? 'Instance starting with existing session...' 
+                : 'Instance connection initiated. QR code will be available shortly.',
+        ]);
+    }
+
+    /**
+     * Restart an instance (stop then start).
+     */
+    public function restart(Request $request, Instance $instance): JsonResponse
+    {
+        if ($instance->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'UNAUTHORIZED',
+                    'message' => 'You do not own this instance.',
+                ],
+            ], 403);
+        }
+
+        // Stop first
+        if ($instance->status !== 'disconnected') {
+            $this->instanceService->updateStatus($instance, 'disconnected');
+            $instance->update([
+                'qr_code' => null,
+                'qr_expires_at' => null,
+            ]);
+            $this->instanceService->notifyInstanceStop($instance->fresh());
+        }
+
+        // Small delay to ensure stop is processed
+        sleep(1);
+
+        // Then start
+        if ($instance->session_data) {
+            $this->instanceService->updateStatus($instance, 'connecting');
+            $this->instanceService->notifyInstanceStart($instance->fresh());
+        } else {
+            $this->instanceService->updateStatus($instance, 'connecting');
+            $this->instanceService->notifyConnectionRequest($instance->fresh());
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'instance' => $instance->fresh(),
+            ],
+            'message' => 'Instance restart initiated. ' . ($instance->session_data 
+                ? 'Reconnecting with existing session...' 
+                : 'QR code will be available shortly.'),
+        ]);
+    }
+
+    /**
      * Delete an instance.
      */
     public function destroy(Request $request, Instance $instance): JsonResponse

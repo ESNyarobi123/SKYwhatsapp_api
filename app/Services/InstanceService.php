@@ -50,4 +50,24 @@ class InstanceService
     {
         ProcessInstanceConnection::dispatch($instance);
     }
+
+    /**
+     * Notify Node.js service to stop an instance.
+     */
+    public function notifyInstanceStop(Instance $instance): void
+    {
+        // Node.js service will poll for instances with status 'disconnected'
+        // and stop the connection. No need for explicit notification.
+        // But we can dispatch a job if needed in the future.
+    }
+
+    /**
+     * Notify Node.js service to start an instance.
+     */
+    public function notifyInstanceStart(Instance $instance): void
+    {
+        // If instance has session_data, Node.js should try to reconnect
+        // Otherwise, it should generate new QR code
+        ProcessInstanceConnection::dispatch($instance);
+    }
 }

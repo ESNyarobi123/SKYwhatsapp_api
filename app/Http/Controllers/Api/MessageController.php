@@ -67,12 +67,23 @@ class MessageController extends Controller
             ], 403);
         }
 
+        // Handle image upload if provided
+        $metadata = $request->metadata ?? [];
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $imagePath = $image->store('messages', 'public');
+            $metadata['hasMedia'] = true;
+            $metadata['mediaType'] = $image->getMimeType();
+            $metadata['mediaUrl'] = asset('storage/'.$imagePath);
+            $metadata['mediaPath'] = $imagePath;
+        }
+
         $message = $this->messageService->createOutboundMessage(
             $user,
             $instance,
             $request->to,
-            $request->body,
-            $request->metadata
+            $request->body ?? ($request->hasFile('image') ? '[Image]' : ''),
+            $metadata
         );
 
         // Increment message usage after successful message creation
