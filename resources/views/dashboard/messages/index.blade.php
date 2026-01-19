@@ -487,12 +487,29 @@ function renderMessagesList() {
         const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
         const phoneNumber = extractPhoneNumber(contactJID);
         
-        // Skip if no valid phone number
+        // Declare variables outside if/else block
+        let formattedPhone;
+        let phoneLastDigit;
+        
+        // Log if phone number extraction fails
         if (!phoneNumber || phoneNumber.length > 15) {
-            return '';
+            console.warn('Failed to extract phone number for message:', {
+                id: msg.id,
+                jid: contactJID,
+                direction: msg.direction,
+                from: msg.from,
+                to: msg.to
+            });
+            // Still render the message, but use JID or a fallback
+            const fallbackPhone = contactJID ? contactJID.replace(/@.*$/, '').substring(0, 15) : 'Unknown';
+            formattedPhone = fallbackPhone;
+            phoneLastDigit = fallbackPhone.slice(-1) || '?';
+        } else {
+            formattedPhone = formatPhoneNumber(phoneNumber);
+            phoneLastDigit = phoneNumber.slice(-1) || '?';
         }
         
-        const formattedPhone = formatPhoneNumber(phoneNumber);
+        // Continue with rendering
         const messageTime = new Date(msg.created_at);
         const timeStr = messageTime.toLocaleDateString() === new Date().toLocaleDateString()
             ? messageTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -503,7 +520,7 @@ function renderMessagesList() {
         const messageBody = msg.body || '[Media]';
         const safeMessageBody = escapeHtml(messageBody.substring(0, 50));
         const safeInstanceName = escapeHtml(msg.instance?.name || 'Unknown');
-        const phoneLastDigit = phoneNumber.slice(-1) || '?';
+        // phoneLastDigit already assigned above
         
         // Direction indicator
         const directionIcon = isInbound 
