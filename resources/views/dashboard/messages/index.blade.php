@@ -833,6 +833,11 @@ document.getElementById('filterInstance')?.addEventListener('change', () => {
     loadMessages();
 });
 
+// Manual refresh messages list
+function refreshMessagesList() {
+    loadMessages();
+}
+
 // Load messages on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadMessages();
