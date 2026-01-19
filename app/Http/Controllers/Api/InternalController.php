@@ -59,6 +59,7 @@ class InternalController extends Controller
      */
     public function clearQrCode(Instance $instance): JsonResponse
     {
+        
         $instance->update([
             'qr_code' => null,
             'qr_expires_at' => null,
