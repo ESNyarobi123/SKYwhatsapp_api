@@ -21,11 +21,6 @@
                             <option value="{{ $instance->id }}">{{ $instance->name }}</option>
                         @endforeach
                     </select>
-                    <button onclick="refreshMessagesList()" class="p-2 bg-[#2A3942] hover:bg-[#FCD535] hover:text-black border border-white/10 rounded-lg text-white transition-colors" title="Refresh Messages">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                    </button>
                 </div>
                 <div class="relative">
                     <input 
@@ -335,27 +330,23 @@ function loadMessages() {
                 return !isGroupJID(contactJID);
             });
             
-            // Group by contact (phone number + instance)
-            const contacts = groupMessagesByContact(allMessages);
-            
             // Filter by search term
-            let filteredContacts = contacts;
-            if (searchTerm) {
-                filteredContacts = contacts.filter(contact => {
-                    const formattedPhone = formatPhoneNumber(contact.phoneNumber);
-                    const lastMessageBody = contact.lastMessage?.body || '';
-                    const instanceName = contact.instanceName || '';
-                    
-                    return formattedPhone.toLowerCase().includes(searchTerm) || 
-                           lastMessageBody.toLowerCase().includes(searchTerm) ||
-                           instanceName.toLowerCase().includes(searchTerm);
-                });
-            }
+            filteredMessages = allMessages.filter(msg => {
+                const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
+                const phoneNumber = extractPhoneNumber(contactJID);
+                const formattedPhone = phoneNumber ? formatPhoneNumber(phoneNumber) : '';
+                const messageBody = msg.body || '';
+                const instanceName = msg.instance?.name || '';
+                
+                return formattedPhone.toLowerCase().includes(searchTerm) || 
+                       messageBody.toLowerCase().includes(searchTerm) ||
+                       instanceName.toLowerCase().includes(searchTerm);
+            });
             
-            // Sort by last message time (newest first)
-            filteredContacts.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+            // Sort by created_at (newest first)
+            filteredMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             
-            renderContactsList(filteredContacts);
+            renderMessagesList();
         } else {
             messagesList.innerHTML = `
                 <div class="flex flex-col items-center justify-center py-16 px-4">
@@ -392,11 +383,11 @@ function loadMessages() {
     });
 }
 
-// Render contacts list (grouped by phone number - no duplicates)
-function renderContactsList(contacts) {
+// Render messages list (individual messages - numbers can repeat)
+function renderMessagesList() {
     const messagesList = document.getElementById('messagesList');
     
-    if (!contacts || contacts.length === 0) {
+    if (!filteredMessages || filteredMessages.length === 0) {
         messagesList.innerHTML = `
             <div class="flex flex-col items-center justify-center py-16 px-4">
                 <div class="w-20 h-20 rounded-full bg-[#FCD535]/10 flex items-center justify-center mb-4">
@@ -404,7 +395,7 @@ function renderContactsList(contacts) {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                 </div>
-                <h3 class="text-white font-semibold text-lg mb-2">No conversations found</h3>
+                <h3 class="text-white font-semibold text-lg mb-2">No messages found</h3>
                 <p class="text-white/60 text-sm text-center max-w-xs">
                     Start chatting by sending or receiving a message
                 </p>
@@ -413,51 +404,57 @@ function renderContactsList(contacts) {
         return;
     }
     
-    messagesList.innerHTML = contacts.map(contact => {
-        const formattedPhone = formatPhoneNumber(contact.phoneNumber);
-        const lastMessageTime = new Date(contact.lastMessageTime);
-        const timeStr = lastMessageTime.toLocaleDateString() === new Date().toLocaleDateString()
-            ? lastMessageTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-            : lastMessageTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    messagesList.innerHTML = filteredMessages.map(msg => {
+        // Extract contact info
+        const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
+        const phoneNumber = extractPhoneNumber(contactJID);
         
-        const isSelected = selectedContact && 
-                          selectedContact.phoneNumber === contact.phoneNumber && 
-                          selectedContact.instanceId === contact.instanceId;
+        // Skip if no valid phone number
+        if (!phoneNumber || phoneNumber.length > 15) {
+            return '';
+        }
         
-        const lastMessageBody = contact.lastMessage?.body || '[Media]';
-        const safeMessageBody = escapeHtml(lastMessageBody.substring(0, 50));
-        const safeInstanceName = escapeHtml(contact.instanceName);
-        const phoneLastDigit = contact.phoneNumber.slice(-1) || '?';
-        const messageCount = contact.messages.length;
+        const formattedPhone = formatPhoneNumber(phoneNumber);
+        const messageTime = new Date(msg.created_at);
+        const timeStr = messageTime.toLocaleDateString() === new Date().toLocaleDateString()
+            ? messageTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            : messageTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         
-        // Check if last message is recent (within last 5 minutes)
-        const isToday = lastMessageTime.toLocaleDateString() === new Date().toLocaleDateString();
-        const isNewMessage = isToday && new Date(lastMessageTime) > new Date(Date.now() - 5 * 60 * 1000);
+        const isSelected = selectedMessage && selectedMessage.id === msg.id;
+        const isInbound = msg.direction === 'inbound';
+        const messageBody = msg.body || '[Media]';
+        const safeMessageBody = escapeHtml(messageBody.substring(0, 50));
+        const safeInstanceName = escapeHtml(msg.instance?.name || 'Unknown');
+        const phoneLastDigit = phoneNumber.slice(-1) || '?';
         
-        // Determine message direction for last message
-        const isLastInbound = contact.lastMessage?.direction === 'inbound';
+        // Direction indicator
+        const directionIcon = isInbound 
+            ? '<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+            : '<svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>';
         
         return `
             <div 
-                class="flex items-center space-x-3 p-3 hover:bg-white/5 cursor-pointer transition-all duration-150 border-b border-white/5 ${isSelected ? 'bg-[#202C33] border-l-4 border-l-[#FCD535]' : 'hover:border-l-4 hover:border-l-white/10'}"
-                onclick="selectContact('${contact.phoneNumber.replace(/'/g, "\\'")}', '${contact.jid.replace(/'/g, "\\'")}', ${contact.instanceId}, '${safeInstanceName.replace(/'/g, "\\'")}')"
+                class="flex items-start space-x-3 p-3 hover:bg-white/5 cursor-pointer transition-all duration-150 border-b border-white/5 ${isSelected ? 'bg-[#202C33] border-l-4 border-l-[#FCD535]' : 'hover:border-l-4 hover:border-l-white/10'}"
+                onclick="selectMessage(${msg.id}, '${contactJID.replace(/'/g, "\\'")}', ${msg.instance_id}, '${safeInstanceName.replace(/'/g, "\\'")}')"
             >
-                <div class="relative w-12 h-12 rounded-full bg-gradient-to-br from-[#FCD535]/30 to-[#FCD535]/10 flex items-center justify-center flex-shrink-0 ring-2 ring-[#FCD535]/20">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[#FCD535]/30 to-[#FCD535]/10 flex items-center justify-center flex-shrink-0 ring-2 ring-[#FCD535]/20">
                     <span class="text-[#FCD535] font-bold text-sm">${phoneLastDigit}</span>
-                    ${messageCount > 1 ? `<span class="absolute -bottom-1 -right-1 bg-[#FCD535] text-black text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">${messageCount > 9 ? '9+' : messageCount}</span>` : ''}
-                    ${isNewMessage ? '<span class="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full ring-2 ring-[#111B21]"></span>' : ''}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between mb-1">
-                        <h4 class="text-white font-semibold text-[15px] truncate">${formattedPhone}</h4>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-white font-semibold text-[15px] truncate">${formattedPhone}</h4>
+                            ${directionIcon}
+                        </div>
                         <span class="text-white/50 text-xs flex-shrink-0 ml-2 font-medium">${timeStr}</span>
                     </div>
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="flex items-center gap-2 flex-1 min-w-0">
-                            ${isLastInbound ? '<svg class="w-3 h-3 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' : '<svg class="w-3 h-3 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>'}
-                            <p class="text-white/60 text-sm truncate leading-relaxed">${safeMessageBody}${lastMessageBody.length > 50 ? '...' : ''}</p>
-                        </div>
-                        ${contact.instanceName ? `<span class="text-[#FCD535]/70 text-[9px] px-1.5 py-0.5 rounded-full bg-[#FCD535]/10 flex-shrink-0 whitespace-nowrap font-medium">${safeInstanceName}</span>` : ''}
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <p class="text-white/60 text-sm truncate flex-1 leading-relaxed">${safeMessageBody}${messageBody.length > 50 ? '...' : ''}</p>
+                        ${msg.instance?.name ? `<span class="text-[#FCD535]/70 text-[10px] px-2 py-0.5 rounded-full bg-[#FCD535]/10 flex-shrink-0 whitespace-nowrap font-medium">${safeInstanceName}</span>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-white/40 text-[10px] px-2 py-0.5 rounded ${isInbound ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'}">${isInbound ? 'Incoming' : 'Outgoing'}</span>
+                        <span class="text-white/40 text-[10px]">${msg.status || 'sent'}</span>
                     </div>
                 </div>
             </div>
@@ -479,50 +476,37 @@ function goBackToMessages() {
     currentChatPhone = null;
     currentChatInstanceId = null;
     
-    // Re-render contacts list to remove selection
-    const contacts = groupMessagesByContact(allMessages);
-    const searchTerm = document.getElementById('messageSearch')?.value.toLowerCase() || '';
-    
-    let filteredContacts = contacts;
-    if (searchTerm) {
-        filteredContacts = contacts.filter(contact => {
-            const formattedPhone = formatPhoneNumber(contact.phoneNumber);
-            const lastMessageBody = contact.lastMessage?.body || '';
-            const instanceName = contact.instanceName || '';
-            
-            return formattedPhone.toLowerCase().includes(searchTerm) || 
-                   lastMessageBody.toLowerCase().includes(searchTerm) ||
-                   instanceName.toLowerCase().includes(searchTerm);
-        });
-    }
-    
-    filteredContacts.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
-    renderContactsList(filteredContacts);
+    // Re-render messages list to remove selection
+    renderMessagesList();
 }
 
-// Select contact and show chat
-function selectContact(phoneNumber, jid, instanceId, instanceName) {
-    selectedContact = { phoneNumber, jid, instanceId, instanceName };
+// Select message and show chat
+function selectMessage(messageId, jid, instanceId, instanceName) {
+    // Find the selected message
+    const message = allMessages.find(m => m.id === messageId);
+    if (!message) return;
     
-    currentChatPhone = jid || phoneNumber;
+    selectedMessage = message;
+    
+    // Extract contact info from message
+    const contactJID = message.direction === 'inbound' ? message.from : message.to;
+    const phoneNumber = extractPhoneNumber(contactJID);
+    
+    if (!phoneNumber) return;
+    
+    currentChatPhone = contactJID;
     currentChatInstanceId = instanceId;
     
-    // Extract and format phone number
-    let cleanPhone = phoneNumber;
-    if (jid && jid.includes('@')) {
-        cleanPhone = extractPhoneNumber(jid) || phoneNumber;
-    }
-    
-    const formattedPhone = formatPhoneNumber(cleanPhone);
+    const formattedPhone = formatPhoneNumber(phoneNumber);
     
     // Update chat header
     document.getElementById('activeContactName').textContent = formattedPhone;
     document.getElementById('activeContactPhone').textContent = formattedPhone;
-    document.getElementById('activeContactInitial').textContent = cleanPhone.slice(-1) || '?';
+    document.getElementById('activeContactInitial').textContent = phoneNumber.slice(-1) || '?';
     
     // Set form values
     document.getElementById('chatInstanceId').value = instanceId;
-    document.getElementById('chatToPhone').value = jid || phoneNumber;
+    document.getElementById('chatToPhone').value = contactJID;
     
     // Show chat area, hide empty state
     document.getElementById('emptyChatState').classList.add('hidden');
@@ -531,27 +515,10 @@ function selectContact(phoneNumber, jid, instanceId, instanceName) {
     document.getElementById('chatInputArea').classList.remove('hidden');
     
     // Load messages for this contact
-    loadChatMessages(jid || phoneNumber, instanceId);
+    loadChatMessages(contactJID, instanceId);
     
-    // Re-render contacts list to show selection
-    const contacts = groupMessagesByContact(allMessages);
-    const searchTerm = document.getElementById('messageSearch')?.value.toLowerCase() || '';
-    
-    let filteredContacts = contacts;
-    if (searchTerm) {
-        filteredContacts = contacts.filter(contact => {
-            const formattedPhone = formatPhoneNumber(contact.phoneNumber);
-            const lastMessageBody = contact.lastMessage?.body || '';
-            const instanceName = contact.instanceName || '';
-            
-            return formattedPhone.toLowerCase().includes(searchTerm) || 
-                   lastMessageBody.toLowerCase().includes(searchTerm) ||
-                   instanceName.toLowerCase().includes(searchTerm);
-        });
-    }
-    
-    filteredContacts.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
-    renderContactsList(filteredContacts);
+    // Re-render messages list to show selection
+    renderMessagesList();
 }
 
 // Refresh chat manually
@@ -832,11 +799,6 @@ document.getElementById('messageSearch')?.addEventListener('input', (e) => {
 document.getElementById('filterInstance')?.addEventListener('change', () => {
     loadMessages();
 });
-
-// Manual refresh messages list
-function refreshMessagesList() {
-    loadMessages();
-}
 
 // Load messages on page load
 document.addEventListener('DOMContentLoaded', () => {
