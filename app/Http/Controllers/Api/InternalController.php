@@ -186,7 +186,20 @@ class InternalController extends Controller
                 $query->whereNull('qr_code')
                     ->orWhere('qr_expires_at', '<', now());
             })
-            ->get();
+            ->get()
+            ->map(function ($instance) {
+                // Format instance data for Node.js service
+                return [
+                    'id' => $instance->id,
+                    'user_id' => $instance->user_id,
+                    'name' => $instance->name,
+                    'phone_number' => $instance->phone_number,
+                    'status' => $instance->status,
+                    'session_data' => $instance->session_data, // Will be null for new connections
+                    'created_at' => $instance->created_at,
+                    'updated_at' => $instance->updated_at,
+                ];
+            });
 
         return response()->json([
             'success' => true,
@@ -211,10 +224,23 @@ class InternalController extends Controller
             ], 400);
         }
 
+        // Prepare instance data for Node.js service
+        // Only include session_data if it exists (for reconnection scenarios)
+        $instanceData = [
+            'id' => $instance->id,
+            'user_id' => $instance->user_id,
+            'name' => $instance->name,
+            'phone_number' => $instance->phone_number,
+            'status' => $instance->status,
+            'session_data' => $instance->session_data, // Will be null for new connections, which is fine
+            'created_at' => $instance->created_at,
+            'updated_at' => $instance->updated_at,
+        ];
+
         return response()->json([
             'success' => true,
             'data' => [
-                'instance' => $instance,
+                'instance' => $instanceData,
             ],
         ]);
     }

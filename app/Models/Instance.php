@@ -65,7 +65,16 @@ class Instance extends Model
      */
     public function getSessionDataAttribute($value): ?string
     {
-        return $value ? Crypt::decryptString($value) : null;
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($value);
+        } catch (\Exception $e) {
+            // If decryption fails (e.g., corrupted data), return null
+            return null;
+        }
     }
 
     /**
@@ -81,7 +90,16 @@ class Instance extends Model
      */
     public function getQrCodeAttribute($value): ?string
     {
-        return $value ? Crypt::decryptString($value) : null;
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($value);
+        } catch (\Exception $e) {
+            // If decryption fails (e.g., corrupted data), return null
+            return null;
+        }
     }
 
     /**
