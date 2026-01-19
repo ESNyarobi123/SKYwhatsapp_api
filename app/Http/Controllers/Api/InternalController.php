@@ -177,6 +177,34 @@ class InternalController extends Controller
     }
 
     /**
+     * Get all instances (for polling status changes).
+     */
+    public function getAllInstances(Request $request): JsonResponse
+    {
+        $instances = Instance::whereIn('status', ['connecting', 'connected', 'disconnected'])
+            ->get()
+            ->map(function ($instance) {
+                return [
+                    'id' => $instance->id,
+                    'user_id' => $instance->user_id,
+                    'name' => $instance->name,
+                    'phone_number' => $instance->phone_number,
+                    'status' => $instance->status,
+                    'session_data' => $instance->session_data,
+                    'created_at' => $instance->created_at,
+                    'updated_at' => $instance->updated_at,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'instances' => $instances,
+            ],
+        ]);
+    }
+
+    /**
      * Get pending connections (instances with status "connecting").
      */
     public function getPendingConnections(Request $request): JsonResponse

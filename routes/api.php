@@ -90,6 +90,7 @@ Route::prefix('v1')->group(function () {
 // Internal API routes (for Node.js service)
 Route::prefix('internal')->middleware([\App\Http\Middleware\AuthenticateInternalApi::class])->group(function () {
     // Instance management
+    Route::get('/instances', [InternalController::class, 'getAllInstances'])->name('api.internal.instances.index');
     Route::get('/instances/pending', [InternalController::class, 'getPendingConnections'])->name('api.internal.instances.pending');
     Route::get('/instances/{instance}/connect', [InternalController::class, 'getInstanceForConnection'])->name('api.internal.instances.connect');
     Route::post('/instances/{instance}/qr', [InternalController::class, 'storeQrCode'])->name('api.internal.instances.qr');
