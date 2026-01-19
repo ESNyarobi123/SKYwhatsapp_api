@@ -123,7 +123,16 @@ class MessageController extends Controller
             $query->where('direction', $request->direction);
         }
 
-        $messages = $query->paginate($request->get('per_page', 15));
+        // Filter out group messages - only show private messages
+        // Groups have @g.us or @lid in the JID
+        $query->where(function ($q) {
+            $q->where('from', 'not like', '%@g.us')
+              ->where('from', 'not like', '%@lid')
+              ->where('to', 'not like', '%@g.us')
+              ->where('to', 'not like', '%@lid');
+        });
+
+        $messages = $query->paginate($request->get('per_page', 50));
         $instances = $request->user()->instances()->get();
 
         if ($request->expectsJson()) {

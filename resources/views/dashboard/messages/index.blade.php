@@ -1,223 +1,163 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="space-y-6">
-    <div class="mb-8">
+<div class="h-[calc(100vh-120px)] flex flex-col">
+    <!-- Header -->
+    <div class="mb-4">
         <h1 class="text-3xl font-bold text-white mb-2">Messages</h1>
-        <p class="text-white/70">View your message history</p>
+        <p class="text-white/70">Chat with your contacts</p>
     </div>
 
-    <!-- Filters -->
-    <x-card>
-        <form method="GET" action="{{ route('dashboard.messages') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-                <label for="instance_id" class="block text-sm font-medium text-white/90 mb-2">Instance</label>
-                <select id="instance_id" name="instance_id" class="w-full px-4 py-3 bg-[#1A1A1A] border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#FCD535]">
-                    <option value="">All Instances</option>
-                    @foreach($instances as $instance)
-                        <option value="{{ $instance->id }}" {{ request('instance_id') == $instance->id ? 'selected' : '' }}>
-                            {{ $instance->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label for="direction" class="block text-sm font-medium text-white/90 mb-2">Direction</label>
-                <select id="direction" name="direction" class="w-full px-4 py-3 bg-[#1A1A1A] border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#FCD535]">
-                    <option value="">All</option>
-                    <option value="inbound" {{ request('direction') == 'inbound' ? 'selected' : '' }}>Inbound</option>
-                    <option value="outbound" {{ request('direction') == 'outbound' ? 'selected' : '' }}>Outbound</option>
-                </select>
-            </div>
-            <div class="flex items-end">
-                <x-button type="submit" variant="primary" size="md" class="w-full">Filter</x-button>
-            </div>
-        </form>
-    </x-card>
-
-    @if($messages->count() > 0)
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead>
-                    <tr class="border-b border-white/10">
-                        <th class="px-4 py-3 text-left text-sm font-medium text-white/70">Contact</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-white/70">Direction</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-white/70">Message</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-white/70">Status</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-white/70">Time</th>
-                        <th class="px-4 py-3 text-left text-sm font-medium text-white/70">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-white/5">
-                    @foreach($messages as $message)
-                        <tr class="hover:bg-white/5 transition-colors cursor-pointer" onclick="openChat('{{ $message->contact_phone_number }}', {{ $message->instance_id }})">
-                            <td class="px-4 py-4">
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-10 h-10 rounded-full bg-[#FCD535]/20 flex items-center justify-center">
-                                        <span class="text-[#FCD535] font-semibold text-sm">{{ substr($message->contact_phone_number, -1) }}</span>
-                                    </div>
-                                    <div>
-                                        <div class="text-white font-medium">{{ $message->contact_phone_number }}</div>
-                                        <div class="text-white/60 text-xs">{{ $message->instance->name ?? 'Unknown' }}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-4 py-4">
-                                <x-badge variant="{{ $message->direction === 'inbound' ? 'success' : 'gold' }}">
-                                    {{ ucfirst($message->direction) }}
-                                </x-badge>
-                            </td>
-                            <td class="px-4 py-4 text-white/70 text-sm max-w-xs">
-                                @if($message->hasMedia())
-                                    <div class="flex items-center space-x-2">
-                                        <svg class="w-4 h-4 text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        <span>{{ $message->getMediaType() ?? 'Media' }}</span>
-                                    </div>
-                                @else
-                                    {{ Str::limit($message->body, 50) }}
-                                @endif
-                            </td>
-                            <td class="px-4 py-4">
-                                <x-badge variant="{{ $message->status === 'delivered' ? 'success' : ($message->status === 'failed' ? 'error' : 'warning') }}">
-                                    {{ ucfirst($message->status) }}
-                                </x-badge>
-                            </td>
-                            <td class="px-4 py-4 text-white/70 text-sm">
-                                {{ $message->created_at->diffForHumans() }}
-                            </td>
-                            <td class="px-4 py-4">
-                                <button onclick="event.stopPropagation(); openChat('{{ $message->contact_phone_number }}', {{ $message->instance_id }})" class="text-[#FCD535] hover:text-[#F0C420] text-sm transition-colors">
-                                    Chat
-                                </button>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="mt-6">
-            {{ $messages->links() }}
-        </div>
-    @else
-        <x-card>
-            <div class="text-center py-12">
-                <svg class="w-16 h-16 mx-auto text-white/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                </svg>
-                <p class="text-white/70">No messages yet</p>
-            </div>
-        </x-card>
-    @endif
-</div>
-
-<!-- WhatsApp-like Chat Modal -->
-<div id="chatModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-    <div class="bg-[#0B141A] border border-white/20 rounded-lg w-full max-w-4xl h-[85vh] mx-4 flex flex-col shadow-2xl" style="background-color: #0B141A !important;">
-        <!-- Chat Header -->
-        <div class="bg-[#202C33] px-6 py-4 flex items-center justify-between border-b border-white/10" style="background-color: #202C33 !important;">
-            <div class="flex items-center space-x-3">
-                <button onclick="closeChatModal()" class="text-white/70 hover:text-white transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                </button>
-                <div class="w-10 h-10 rounded-full bg-[#FCD535]/20 flex items-center justify-center">
-                    <span class="text-[#FCD535] font-semibold text-sm" id="chatContactInitial">?</span>
+    <!-- WhatsApp-like Two-Pane Layout -->
+    <div class="flex-1 flex bg-[#0B141A] rounded-lg border border-white/10 overflow-hidden" style="background-color: #0B141A !important;">
+        <!-- Left Pane: Contacts List -->
+        <div class="w-1/3 border-r border-white/10 bg-[#111B21] flex flex-col" style="background-color: #111B21 !important;">
+            <!-- Search and Filter Header -->
+            <div class="p-4 border-b border-white/10 bg-[#202C33]" style="background-color: #202C33 !important;">
+                <div class="flex items-center space-x-2 mb-3">
+                    <select id="filterInstance" class="flex-1 px-3 py-2 bg-[#2A3942] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FCD535]">
+                        <option value="">All Instances</option>
+                        @foreach($instances as $instance)
+                            <option value="{{ $instance->id }}">{{ $instance->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
-                <div>
-                    <h3 class="text-white font-semibold" id="chatContactName">Loading...</h3>
-                    <p class="text-white/60 text-xs" id="chatContactPhone">Loading...</p>
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        id="contactSearch" 
+                        placeholder="Search or start new chat" 
+                        class="w-full px-4 py-2 pl-10 bg-[#2A3942] border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#FCD535]"
+                    >
+                    <svg class="w-5 h-5 text-white/40 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Contacts List -->
+            <div id="contactsList" class="flex-1 overflow-y-auto">
+                <div class="flex items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div>
+                    <p class="ml-3 text-white/70">Loading contacts...</p>
                 </div>
             </div>
         </div>
 
-        <!-- Messages Area (WhatsApp-like) -->
-        <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-2" style="background-color: #0B141A !important; background-image: url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.02\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');">
-            <div class="flex items-center justify-center py-8">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div>
-                <p class="ml-3 text-white/70">Loading messages...</p>
-            </div>
-        </div>
-
-        <!-- Message Input Area -->
-        <div class="bg-[#202C33] px-4 py-3 border-t border-white/10" style="background-color: #202C33 !important;">
-            <form id="chatReplyForm" class="flex items-end space-x-2">
-                <input type="hidden" id="chatInstanceId" name="instance_id">
-                <input type="hidden" id="chatToPhone" name="to">
-                
-                <!-- Image Upload Button -->
-                <label for="chatImageInput" class="cursor-pointer p-2 text-white/70 hover:text-[#FCD535] transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <input type="file" id="chatImageInput" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
-                </label>
-                
-                <!-- Message Input -->
-                <div class="flex-1 relative">
-                    <textarea 
-                        id="chatMessageInput" 
-                        name="body" 
-                        rows="1"
-                        placeholder="Type a message..."
-                        class="w-full px-4 py-3 bg-[#2A3942] border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#FCD535] resize-none"
-                        onkeydown="handleChatKeyDown(event)"
-                    ></textarea>
-                    <div id="chatImagePreview" class="hidden mt-2 relative">
-                        <img id="chatImagePreviewImg" src="" alt="Preview" class="max-w-xs rounded-lg">
-                        <button type="button" onclick="removeImagePreview()" class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                            ×
-                        </button>
+        <!-- Right Pane: Chat Area -->
+        <div class="flex-1 flex flex-col bg-[#0B141A]" style="background-color: #0B141A !important; background-image: url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.02\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');">
+            <!-- Chat Header (shown when contact selected) -->
+            <div id="chatHeader" class="hidden bg-[#202C33] px-6 py-4 flex items-center justify-between border-b border-white/10" style="background-color: #202C33 !important;">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-[#FCD535]/20 flex items-center justify-center">
+                        <span class="text-[#FCD535] font-semibold text-sm" id="activeContactInitial">?</span>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-semibold" id="activeContactName">Select a contact</h3>
+                        <p class="text-white/60 text-xs" id="activeContactPhone"></p>
                     </div>
                 </div>
-                
-                <!-- Send Button -->
-                <button 
-                    type="submit" 
-                    class="p-3 bg-[#FCD535] hover:bg-[#F0C420] rounded-full transition-colors"
-                    id="chatSendButton"
-                >
-                    <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <button onclick="refreshChat()" class="p-2 text-white/70 hover:text-white transition-colors" title="Refresh">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
                 </button>
-            </form>
+            </div>
+
+            <!-- Empty State (shown when no contact selected) -->
+            <div id="emptyChatState" class="flex-1 flex items-center justify-center">
+                <div class="text-center">
+                    <svg class="w-24 h-24 mx-auto text-white/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <p class="text-white/60 text-lg mb-2">Select a contact to start chatting</p>
+                    <p class="text-white/40 text-sm">Choose a conversation from the list on the left</p>
+                </div>
+            </div>
+
+            <!-- Messages Area (shown when contact selected) -->
+            <div id="chatMessagesArea" class="hidden flex-1 overflow-y-auto p-4 space-y-2">
+                <!-- Messages will be loaded here -->
+            </div>
+
+            <!-- Message Input Area (shown when contact selected) -->
+            <div id="chatInputArea" class="hidden bg-[#202C33] px-4 py-3 border-t border-white/10" style="background-color: #202C33 !important;">
+                <form id="chatReplyForm" class="flex items-end space-x-2">
+                    <input type="hidden" id="chatInstanceId" name="instance_id">
+                    <input type="hidden" id="chatToPhone" name="to">
+                    
+                    <!-- Image Upload Button -->
+                    <label for="chatImageInput" class="cursor-pointer p-2 text-white/70 hover:text-[#FCD535] transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <input type="file" id="chatImageInput" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                    </label>
+                    
+                    <!-- Message Input -->
+                    <div class="flex-1 relative">
+                        <textarea 
+                            id="chatMessageInput" 
+                            name="body" 
+                            rows="1"
+                            placeholder="Type a message..."
+                            class="w-full px-4 py-3 bg-[#2A3942] border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#FCD535] resize-none"
+                            onkeydown="handleChatKeyDown(event)"
+                        ></textarea>
+                        <div id="chatImagePreview" class="hidden mt-2 relative">
+                            <img id="chatImagePreviewImg" src="" alt="Preview" class="max-w-xs rounded-lg">
+                            <button type="button" onclick="removeImagePreview()" class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Send Button -->
+                    <button 
+                        type="submit" 
+                        class="p-3 bg-[#FCD535] hover:bg-[#F0C420] rounded-full transition-colors"
+                        id="chatSendButton"
+                    >
+                        <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Message Details Modal -->
-<div id="messageDetailsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-[#252525] border border-white/5 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h2 class="text-xl font-semibold text-white mb-4">Message Details</h2>
-        <div id="messageDetailsContent" class="text-white/70">
-            <p>Loading...</p>
-        </div>
-        <div class="mt-6 text-center">
-            <x-button type="button" variant="outline" size="md" onclick="closeMessageDetailsModal()">Close</x-button>
-        </div>
-    </div>
-</div>
+
 
 @push('scripts')
 <script>
 let currentChatPhone = null;
 let currentChatInstanceId = null;
 let chatImageFile = null;
-let chatPollInterval = null;
+let allContacts = [];
+let filteredContacts = [];
+let selectedContact = null;
 
-// Extract phone number from JID
+// Check if JID is a group
+function isGroupJID(jid) {
+    return jid && (jid.includes('@g.us') || jid.includes('@lid'));
+}
+
+// Extract phone number from JID (only for private chats)
 function extractPhoneNumber(jid) {
-    if (!jid) return 'Unknown';
-    // Remove @lid, @g.us, @s.whatsapp.net, etc.
+    if (!jid) return null;
+    
+    // Skip groups
+    if (isGroupJID(jid)) {
+        return null;
+    }
+    
+    // Remove @s.whatsapp.net, etc.
     let phone = jid.replace(/@.*$/, '');
     // Remove any non-digit characters except +
     phone = phone.replace(/[^\d+]/g, '');
-    return phone || jid;
+    return phone || null;
 }
 
 // Format phone number for display
@@ -258,52 +198,15 @@ function formatPhoneNumber(phone) {
     return phone;
 }
 
-function openChat(phoneNumber, instanceId) {
-    currentChatPhone = phoneNumber;
-    currentChatInstanceId = instanceId;
+// Load contacts list (left pane)
+function loadContacts() {
+    const contactsList = document.getElementById('contactsList');
+    contactsList.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div><p class="ml-3 text-white/70">Loading contacts...</p></div>';
     
-    // Extract and format phone number properly
-    let cleanPhone = phoneNumber;
-    if (phoneNumber.includes('@')) {
-        // Extract from JID
-        cleanPhone = phoneNumber.replace(/@.*$/, '').replace(/[^\d+]/g, '');
-    }
+    const instanceId = document.getElementById('filterInstance')?.value || '';
+    const searchTerm = document.getElementById('contactSearch')?.value.toLowerCase() || '';
     
-    // Update chat header
-    const formattedPhone = formatPhoneNumber(cleanPhone);
-    document.getElementById('chatContactName').textContent = formattedPhone;
-    document.getElementById('chatContactPhone').textContent = formattedPhone;
-    document.getElementById('chatContactInitial').textContent = cleanPhone.slice(-1) || '?';
-    
-    // Set form values
-    document.getElementById('chatInstanceId').value = instanceId;
-    document.getElementById('chatToPhone').value = phoneNumber;
-    
-    // Show modal
-    document.getElementById('chatModal').classList.remove('hidden');
-    
-    // Load messages
-    loadChatMessages(phoneNumber, instanceId);
-    
-    // Start polling for new messages
-    startChatPolling(phoneNumber, instanceId);
-}
-
-function closeChatModal() {
-    document.getElementById('chatModal').classList.add('hidden');
-    stopChatPolling();
-    currentChatPhone = null;
-    currentChatInstanceId = null;
-    chatImageFile = null;
-    removeImagePreview();
-}
-
-function loadChatMessages(phoneNumber, instanceId) {
-    const messagesContainer = document.getElementById('chatMessages');
-    messagesContainer.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div><p class="ml-3 text-white/70">Loading messages...</p></div>';
-    
-    // Fetch messages for this contact
-    fetch(`/api/messages?instance_id=${instanceId}&per_page=50`, {
+    fetch(`/api/messages?per_page=100${instanceId ? '&instance_id=' + instanceId : ''}`, {
         headers: {
             'Accept': 'application/json',
         },
@@ -313,26 +216,190 @@ function loadChatMessages(phoneNumber, instanceId) {
         if (data.success) {
             const messages = data.data.messages || [];
             
-            // Filter messages for this contact
+            // Group messages by contact (only private, not groups)
+            const contactsMap = new Map();
+            
+            messages.forEach(msg => {
+                const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
+                
+                // Skip groups
+                if (isGroupJID(contactJID)) {
+                    return;
+                }
+                
+                const phoneNumber = extractPhoneNumber(contactJID);
+                if (!phoneNumber) return;
+                
+                const contactKey = `${phoneNumber}_${msg.instance_id}`;
+                
+                if (!contactsMap.has(contactKey)) {
+                    contactsMap.set(contactKey, {
+                        phoneNumber: phoneNumber,
+                        jid: contactJID,
+                        instanceId: msg.instance_id,
+                        instanceName: msg.instance?.name || 'Unknown',
+                        lastMessage: msg.body || '[Media]',
+                        lastMessageTime: msg.created_at,
+                        unreadCount: 0,
+                        lastMessageDirection: msg.direction
+                    });
+                } else {
+                    const contact = contactsMap.get(contactKey);
+                    if (new Date(msg.created_at) > new Date(contact.lastMessageTime)) {
+                        contact.lastMessage = msg.body || '[Media]';
+                        contact.lastMessageTime = msg.created_at;
+                        contact.lastMessageDirection = msg.direction;
+                    }
+                }
+            });
+            
+            allContacts = Array.from(contactsMap.values());
+            
+            // Filter by search term
+            filteredContacts = allContacts.filter(contact => {
+                const phone = formatPhoneNumber(contact.phoneNumber);
+                return phone.toLowerCase().includes(searchTerm) || 
+                       contact.instanceName.toLowerCase().includes(searchTerm);
+            });
+            
+            // Sort by last message time (newest first)
+            filteredContacts.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+            
+            renderContactsList();
+        }
+    })
+    .catch(error => {
+        console.error('Error loading contacts:', error);
+        contactsList.innerHTML = '<p class="text-red-500 text-center py-8">Error loading contacts</p>';
+    });
+}
+
+// Render contacts list
+function renderContactsList() {
+    const contactsList = document.getElementById('contactsList');
+    
+    if (filteredContacts.length === 0) {
+        contactsList.innerHTML = '<p class="text-white/60 text-center py-8">No contacts found</p>';
+        return;
+    }
+    
+    contactsList.innerHTML = filteredContacts.map(contact => {
+        const formattedPhone = formatPhoneNumber(contact.phoneNumber);
+        const lastMessageTime = new Date(contact.lastMessageTime);
+        const timeStr = lastMessageTime.toLocaleDateString() === new Date().toLocaleDateString()
+            ? lastMessageTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            : lastMessageTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        
+        const isSelected = selectedContact && 
+                          selectedContact.phoneNumber === contact.phoneNumber && 
+                          selectedContact.instanceId === contact.instanceId;
+        
+        return `
+            <div 
+                class="flex items-center space-x-3 p-3 hover:bg-white/5 cursor-pointer transition-colors ${isSelected ? 'bg-white/10' : ''}"
+                onclick="selectContact('${contact.phoneNumber}', '${contact.jid}', ${contact.instanceId}, '${contact.instanceName}')"
+            >
+                <div class="w-12 h-12 rounded-full bg-[#FCD535]/20 flex items-center justify-center flex-shrink-0">
+                    <span class="text-[#FCD535] font-semibold">${contact.phoneNumber.slice(-1) || '?'}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between mb-1">
+                        <h4 class="text-white font-medium truncate">${formattedPhone}</h4>
+                        <span class="text-white/50 text-xs flex-shrink-0 ml-2">${timeStr}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-white/60 text-sm truncate">${escapeHtml(contact.lastMessage.substring(0, 40))}${contact.lastMessage.length > 40 ? '...' : ''}</p>
+                        <span class="text-white/40 text-xs">${contact.instanceName}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Select contact and show chat
+function selectContact(phoneNumber, jid, instanceId, instanceName) {
+    selectedContact = { phoneNumber, jid, instanceId, instanceName };
+    
+    currentChatPhone = jid || phoneNumber;
+    currentChatInstanceId = instanceId;
+    
+    // Extract and format phone number
+    let cleanPhone = phoneNumber;
+    if (jid && jid.includes('@')) {
+        cleanPhone = extractPhoneNumber(jid) || phoneNumber;
+    }
+    
+    const formattedPhone = formatPhoneNumber(cleanPhone);
+    
+    // Update chat header
+    document.getElementById('activeContactName').textContent = formattedPhone;
+    document.getElementById('activeContactPhone').textContent = formattedPhone;
+    document.getElementById('activeContactInitial').textContent = cleanPhone.slice(-1) || '?';
+    
+    // Set form values
+    document.getElementById('chatInstanceId').value = instanceId;
+    document.getElementById('chatToPhone').value = jid || phoneNumber;
+    
+    // Show chat area, hide empty state
+    document.getElementById('emptyChatState').classList.add('hidden');
+    document.getElementById('chatHeader').classList.remove('hidden');
+    document.getElementById('chatMessagesArea').classList.remove('hidden');
+    document.getElementById('chatInputArea').classList.remove('hidden');
+    
+    // Load messages
+    loadChatMessages(jid || phoneNumber, instanceId);
+    
+    // Re-render contacts to show selection
+    renderContactsList();
+}
+
+// Refresh chat manually
+function refreshChat() {
+    if (currentChatPhone && currentChatInstanceId) {
+        loadChatMessages(currentChatPhone, currentChatInstanceId);
+    }
+}
+
+function loadChatMessages(phoneNumber, instanceId) {
+    const messagesContainer = document.getElementById('chatMessagesArea');
+    messagesContainer.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FCD535]"></div><p class="ml-3 text-white/70">Loading messages...</p></div>';
+    
+    // Fetch messages for this contact
+    fetch(`/api/messages?instance_id=${instanceId}&per_page=100`, {
+        headers: {
+            'Accept': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const messages = data.data.messages || [];
+            
             // Normalize phone numbers for comparison
             const normalizePhone = (phone) => {
                 if (!phone) return '';
-                // Remove @ and extract digits
                 let cleaned = phone.replace(/@.*$/, '').replace(/[^\d+]/g, '');
-                // Remove leading + for comparison
                 return cleaned.replace(/^\+/, '');
             };
             
             const normalizedCurrentPhone = normalizePhone(phoneNumber);
             
+            // Filter messages for this contact (exclude groups)
             const contactMessages = messages.filter(msg => {
-                const msgPhone = msg.direction === 'inbound' 
-                    ? extractPhoneNumber(msg.from)
-                    : extractPhoneNumber(msg.to);
+                // Skip groups
+                if (isGroupJID(msg.from) || isGroupJID(msg.to)) {
+                    return false;
+                }
+                
+                const msgJID = msg.direction === 'inbound' ? msg.from : msg.to;
+                const msgPhone = extractPhoneNumber(msgJID);
+                
+                if (!msgPhone) return false;
+                
                 const normalizedMsgPhone = normalizePhone(msgPhone);
                 return normalizedMsgPhone === normalizedCurrentPhone || 
-                       msgPhone === phoneNumber || 
-                       (msg.direction === 'inbound' ? msg.from : msg.to) === phoneNumber;
+                       msgJID === phoneNumber;
             });
             
             // Sort by created_at (oldest first)
@@ -349,7 +416,7 @@ function loadChatMessages(phoneNumber, instanceId) {
 }
 
 function renderChatMessages(messages) {
-    const messagesContainer = document.getElementById('chatMessages');
+    const messagesContainer = document.getElementById('chatMessagesArea');
     
     if (messages.length === 0) {
         messagesContainer.innerHTML = '<p class="text-white/60 text-center py-8">No messages yet. Start the conversation!</p>';
@@ -480,9 +547,10 @@ document.getElementById('chatReplyForm').addEventListener('submit', async (e) =>
             messageInput.value = '';
             removeImagePreview();
             
-            // Reload messages
+            // Reload messages and contacts
             setTimeout(() => {
                 loadChatMessages(currentChatPhone, currentChatInstanceId);
+                loadContacts(); // Refresh contacts list
             }, 500);
         } else {
             alert(data.error?.message || 'Failed to send message');
@@ -496,58 +564,21 @@ document.getElementById('chatReplyForm').addEventListener('submit', async (e) =>
     }
 });
 
-function startChatPolling(phoneNumber, instanceId) {
-    if (chatPollInterval) {
-        clearInterval(chatPollInterval);
-    }
-    
-    chatPollInterval = setInterval(() => {
-        if (currentChatPhone === phoneNumber && currentChatInstanceId === instanceId) {
-            loadChatMessages(phoneNumber, instanceId);
-        }
-    }, 5000); // Poll every 5 seconds
-}
-
-function stopChatPolling() {
-    if (chatPollInterval) {
-        clearInterval(chatPollInterval);
-        chatPollInterval = null;
-    }
-}
-
-// Clean up on page unload
-window.addEventListener('beforeunload', () => {
-    stopChatPolling();
+// Search contacts
+document.getElementById('contactSearch')?.addEventListener('input', (e) => {
+    loadContacts();
 });
 
-function showMessageDetails(messageId) {
-    document.getElementById('messageDetailsModal').classList.remove('hidden');
-    fetch(`/api/messages/${messageId}`, {
-        headers: {
-            'Accept': 'application/json',
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const msg = data.data.message;
-            document.getElementById('messageDetailsContent').innerHTML = `
-                <div class="space-y-4">
-                    <div><strong class="text-white">From:</strong> ${msg.from || 'N/A'}</div>
-                    <div><strong class="text-white">To:</strong> ${msg.to || 'N/A'}</div>
-                    <div><strong class="text-white">Direction:</strong> ${msg.direction}</div>
-                    <div><strong class="text-white">Status:</strong> ${msg.status}</div>
-                    <div><strong class="text-white">Body:</strong><br><div class="mt-2 bg-[#1A1A1A] p-4 rounded-lg">${msg.body || 'N/A'}</div></div>
-                    <div><strong class="text-white">Created:</strong> ${new Date(msg.created_at).toLocaleString()}</div>
-                </div>
-            `;
-        }
-    });
-}
+// Filter by instance
+document.getElementById('filterInstance')?.addEventListener('change', () => {
+    loadContacts();
+});
 
-function closeMessageDetailsModal() {
-    document.getElementById('messageDetailsModal').classList.add('hidden');
-}
+// Load contacts on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadContacts();
+});
+
 </script>
 @endpush
 @endsection
