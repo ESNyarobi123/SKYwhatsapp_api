@@ -386,23 +386,9 @@ function loadMessages(silent = false) {
                     return false;
                 }
                 
-                // Additional check: ensure it's a valid private message JID
-                const contactJID = msg.direction === 'inbound' ? msg.from : msg.to;
-                const isValidPrivate = contactJID && (
-                    contactJID.includes('@s.whatsapp.net') || 
-                    contactJID.match(/^\d+@s\.whatsapp\.net$/)
-                );
-                
-                if (!isValidPrivate && !fromIsGroup && !toIsGroup) {
-                    console.warn('Potentially invalid JID format:', {
-                        id: msg.id,
-                        direction: msg.direction,
-                        from: msg.from,
-                        to: msg.to,
-                        contactJID
-                    });
-                }
-                
+                // Accept the message if it's not a group
+                // Messages can have phone numbers with or without @s.whatsapp.net suffix
+                // Examples: "255741712734" or "255741712734@s.whatsapp.net" are both valid
                 return true;
             });
             
