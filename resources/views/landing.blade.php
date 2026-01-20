@@ -387,148 +387,237 @@
     <section id="pricing" class="relative container mx-auto px-6 py-20 lg:py-32">
         <!-- Background Decoration -->
         <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#252525]/20 to-transparent"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#FCD535]/5 rounded-full blur-[150px]"></div>
         
         <div class="relative z-10">
             <div class="text-center mb-16">
+                <div class="inline-flex items-center gap-2 px-4 py-2 mb-6 bg-[#FCD535]/10 border border-[#FCD535]/20 rounded-full">
+                    <svg class="w-4 h-4 text-[#FCD535]" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    <span class="text-sm text-[#FCD535] font-medium">Simple, Transparent Pricing</span>
+                </div>
                 <h2 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white">
-                    Choose Your <span class="text-[#FCD535]">Plan</span>
+                    Choose Your <span class="bg-gradient-to-r from-[#FCD535] to-[#00D9A5] bg-clip-text text-transparent">Perfect Plan</span>
                 </h2>
                 <p class="text-xl md:text-2xl text-white/70 max-w-3xl mx-auto leading-relaxed">
-                    Select the perfect package for your business needs. Start with our free trial or choose a paid plan for more features.
+                    From startups to enterprises, we have a plan that fits your needs. All plans include API access and core features.
                 </p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-                @foreach($packages as $package)
-                    <x-card hover class="relative {{ $package->isFree() ? 'border-[#FCD535]/50 ring-2 ring-[#FCD535]/20' : '' }}">
-                        @if($package->isFree())
-                            <div class="absolute top-4 right-4">
-                                <span class="px-3 py-1 bg-[#FCD535]/10 text-[#FCD535] text-xs font-semibold rounded-full border border-[#FCD535]/30">FREE TRIAL</span>
-                            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-{{ min(count($packages), 4) }} gap-8 max-w-7xl mx-auto">
+                @foreach($packages as $index => $package)
+                    @php
+                        $features = $package->features ?? [];
+                        $isPopular = !$package->isFree() && $index == 1;
+                        $botType = $features['bot_type'] ?? 'simple';
+                        $isAdvancedBot = $botType === 'advanced';
+                    @endphp
+                    
+                    <div class="group relative {{ $isPopular ? 'lg:-mt-4 lg:mb-4' : '' }}">
+                        <!-- Popular Glow Effect -->
+                        @if($isPopular)
+                            <div class="absolute -inset-[2px] bg-gradient-to-r from-[#FCD535] via-[#00D9A5] to-[#FCD535] rounded-3xl opacity-75 blur-sm group-hover:opacity-100 transition-opacity animate-gradient"></div>
                         @endif
                         
-                        <div class="mb-6">
-                            <h3 class="text-2xl font-bold text-white mb-2">{{ $package->name }}</h3>
-                            @if($package->description)
-                                <p class="text-white/70 text-sm mb-4">{{ $package->description }}</p>
-                            @endif
-                            <div class="mb-4">
-                                <span class="text-4xl font-bold text-[#FCD535]">
-                                    {{ $package->isFree() ? 'Free' : number_format($package->price, 2) }}
-                                </span>
-                                @if(!$package->isFree())
-                                    <span class="text-white/60 text-lg ml-2">{{ $package->currency }}</span>
+                        <div class="relative h-full bg-[#252525]/90 backdrop-blur-xl border {{ $isPopular ? 'border-[#FCD535]/50' : 'border-white/10' }} rounded-3xl p-8 hover:border-[#FCD535]/30 transition-all duration-500 hover:transform hover:scale-[1.02] overflow-hidden">
+                            <!-- Background Pattern -->
+                            <div class="absolute inset-0 opacity-5">
+                                <div class="absolute inset-0" style="background-image: radial-gradient(circle at 2px 2px, rgba(252,213,53,0.5) 1px, transparent 0); background-size: 30px 30px;"></div>
+                            </div>
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-6 right-6 flex flex-col gap-2 items-end">
+                                @if($package->isFree())
+                                    <span class="px-3 py-1 bg-[#00D9A5]/20 text-[#00D9A5] text-xs font-bold rounded-full border border-[#00D9A5]/30 uppercase tracking-wider">Free Trial</span>
                                 @endif
-                                <p class="text-white/60 text-xs mt-1">Per {{ $package->duration_days }} {{ $package->duration_days == 1 ? 'day' : 'days' }}</p>
+                                @if($isPopular)
+                                    <span class="px-3 py-1 bg-[#FCD535] text-[#1A1A1A] text-xs font-bold rounded-full uppercase tracking-wider animate-pulse">Most Popular</span>
+                                @endif
+                            </div>
+                            
+                            <div class="relative">
+                                <!-- Package Name -->
+                                <h3 class="text-2xl font-bold text-white mb-2">{{ $package->name }}</h3>
+                                @if($package->description)
+                                    <p class="text-white/60 text-sm mb-6 line-clamp-2">{{ $package->description }}</p>
+                                @endif
+                                
+                                <!-- Price -->
+                                <div class="mb-8">
+                                    <div class="flex items-baseline gap-2">
+                                        <span class="text-5xl font-extrabold {{ $isPopular ? 'bg-gradient-to-r from-[#FCD535] to-[#00D9A5] bg-clip-text text-transparent' : 'text-white' }}">
+                                            {{ $package->isFree() ? 'Free' : '$' . number_format($package->price_usd ?? $package->price, 0) }}
+                                        </span>
+                                        @if(!$package->isFree())
+                                            <span class="text-white/50 text-lg">/{{ $package->duration_days }} days</span>
+                                        @endif
+                                    </div>
+                                    @if($package->isFree())
+                                        <p class="text-[#00D9A5] text-sm mt-2 font-medium">{{ $package->duration_days }} days to explore</p>
+                                    @endif
+                                </div>
+                                
+                                <!-- Bot Type Badge -->
+                                <div class="mb-6">
+                                    <div class="inline-flex items-center gap-2 px-3 py-2 rounded-xl {{ $isAdvancedBot ? 'bg-gradient-to-r from-[#FCD535]/20 to-[#00D9A5]/20 border border-[#FCD535]/30' : 'bg-white/5 border border-white/10' }}">
+                                        <svg class="w-5 h-5 {{ $isAdvancedBot ? 'text-[#FCD535]' : 'text-white/50' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="text-sm font-semibold {{ $isAdvancedBot ? 'text-[#FCD535]' : 'text-white/70' }}">
+                                            {{ $isAdvancedBot ? '🤖 Advanced Bot' : '💬 Simple Bot' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Features List -->
+                                <div class="space-y-4 mb-8">
+                                    <!-- API Features -->
+                                    <div class="pb-4 border-b border-white/5">
+                                        <p class="text-xs text-white/40 uppercase tracking-wider font-semibold mb-3">API Features</p>
+                                        <ul class="space-y-2">
+                                            @if(isset($features['instances']))
+                                                <li class="flex items-center gap-3 text-sm">
+                                                    <div class="w-5 h-5 rounded-full bg-[#00D9A5]/20 flex items-center justify-center flex-shrink-0">
+                                                        <svg class="w-3 h-3 text-[#00D9A5]" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                                                    </div>
+                                                    <span class="text-white/80">
+                                                        @if($features['instances']['limit'] == -1) <strong class="text-[#FCD535]">Unlimited</strong> @else <strong>{{ $features['instances']['limit'] }}</strong> @endif Instances
+                                                    </span>
+                                                </li>
+                                            @endif
+                                            @if(isset($features['messages']))
+                                                <li class="flex items-center gap-3 text-sm">
+                                                    <div class="w-5 h-5 rounded-full bg-[#00D9A5]/20 flex items-center justify-center flex-shrink-0">
+                                                        <svg class="w-3 h-3 text-[#00D9A5]" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                                                    </div>
+                                                    <span class="text-white/80">
+                                                        @if($features['messages']['limit'] == -1) <strong class="text-[#FCD535]">Unlimited</strong> @else <strong>{{ number_format($features['messages']['limit']) }}</strong> @endif Messages/{{ ucfirst($features['messages']['period'] ?? 'day') }}
+                                                    </span>
+                                                </li>
+                                            @endif
+                                            @if(isset($features['api_keys']))
+                                                <li class="flex items-center gap-3 text-sm">
+                                                    <div class="w-5 h-5 rounded-full bg-[#00D9A5]/20 flex items-center justify-center flex-shrink-0">
+                                                        <svg class="w-3 h-3 text-[#00D9A5]" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                                                    </div>
+                                                    <span class="text-white/80">
+                                                        @if($features['api_keys']['limit'] == -1) <strong class="text-[#FCD535]">Unlimited</strong> @else <strong>{{ $features['api_keys']['limit'] }}</strong> @endif API Keys
+                                                    </span>
+                                                </li>
+                                            @endif
+                                        </ul>
+                                    </div>
+                                    
+                                    <!-- Bot Features -->
+                                    <div class="pb-4 border-b border-white/5">
+                                        <p class="text-xs text-white/40 uppercase tracking-wider font-semibold mb-3">Bot Builder</p>
+                                        <ul class="space-y-2">
+                                            @if(isset($features['bot_rules']))
+                                                <li class="flex items-center gap-3 text-sm">
+                                                    <div class="w-5 h-5 rounded-full bg-[#FCD535]/20 flex items-center justify-center flex-shrink-0">
+                                                        <svg class="w-3 h-3 text-[#FCD535]" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                                                    </div>
+                                                    <span class="text-white/80">
+                                                        @if($features['bot_rules']['limit'] == -1) <strong class="text-[#FCD535]">Unlimited</strong> @else <strong>{{ $features['bot_rules']['limit'] }}</strong> @endif Auto-Reply Rules
+                                                    </span>
+                                                </li>
+                                            @endif
+                                            <li class="flex items-center gap-3 text-sm">
+                                                <div class="w-5 h-5 rounded-full {{ ($features['bot_menus'] ?? false) ? 'bg-[#FCD535]/20' : 'bg-white/10' }} flex items-center justify-center flex-shrink-0">
+                                                    @if($features['bot_menus'] ?? false)
+                                                        <svg class="w-3 h-3 text-[#FCD535]" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                                                    @else
+                                                        <svg class="w-3 h-3 text-white/30" fill="currentColor" viewBox="0 0 20 20"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg>
+                                                    @endif
+                                                </div>
+                                                <span class="{{ ($features['bot_menus'] ?? false) ? 'text-white/80' : 'text-white/40 line-through' }}">Interactive Menu Bot</span>
+                                            </li>
+                                            <li class="flex items-center gap-3 text-sm">
+                                                <div class="w-5 h-5 rounded-full {{ ($features['bot_buttons'] ?? false) ? 'bg-[#FCD535]/20' : 'bg-white/10' }} flex items-center justify-center flex-shrink-0">
+                                                    @if($features['bot_buttons'] ?? false)
+                                                        <svg class="w-3 h-3 text-[#FCD535]" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                                                    @else
+                                                        <svg class="w-3 h-3 text-white/30" fill="currentColor" viewBox="0 0 20 20"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg>
+                                                    @endif
+                                                </div>
+                                                <span class="{{ ($features['bot_buttons'] ?? false) ? 'text-white/80' : 'text-white/40 line-through' }}">Quick Reply Buttons</span>
+                                            </li>
+                                            <li class="flex items-center gap-3 text-sm">
+                                                <div class="w-5 h-5 rounded-full {{ ($features['bot_analytics'] ?? false) ? 'bg-[#FCD535]/20' : 'bg-white/10' }} flex items-center justify-center flex-shrink-0">
+                                                    @if($features['bot_analytics'] ?? false)
+                                                        <svg class="w-3 h-3 text-[#FCD535]" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                                                    @else
+                                                        <svg class="w-3 h-3 text-white/30" fill="currentColor" viewBox="0 0 20 20"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg>
+                                                    @endif
+                                                </div>
+                                                <span class="{{ ($features['bot_analytics'] ?? false) ? 'text-white/80' : 'text-white/40 line-through' }}">Bot Analytics Dashboard</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <!-- Support -->
+                                    <div>
+                                        <p class="text-xs text-white/40 uppercase tracking-wider font-semibold mb-3">Support</p>
+                                        <ul class="space-y-2">
+                                            <li class="flex items-center gap-3 text-sm">
+                                                <div class="w-5 h-5 rounded-full bg-[#00D9A5]/20 flex items-center justify-center flex-shrink-0">
+                                                    <svg class="w-3 h-3 text-[#00D9A5]" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                                                </div>
+                                                <span class="text-white/80">Email Support</span>
+                                            </li>
+                                            <li class="flex items-center gap-3 text-sm">
+                                                <div class="w-5 h-5 rounded-full {{ ($features['priority_support'] ?? false) ? 'bg-[#FCD535]/20' : 'bg-white/10' }} flex items-center justify-center flex-shrink-0">
+                                                    @if($features['priority_support'] ?? false)
+                                                        <svg class="w-3 h-3 text-[#FCD535]" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                                                    @else
+                                                        <svg class="w-3 h-3 text-white/30" fill="currentColor" viewBox="0 0 20 20"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg>
+                                                    @endif
+                                                </div>
+                                                <span class="{{ ($features['priority_support'] ?? false) ? 'text-white/80' : 'text-white/40 line-through' }}">Priority 24/7 Support</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                
+                                <!-- CTA Button -->
+                                <div class="pt-6 border-t border-white/5">
+                                    @auth
+                                        @if(auth()->user()->hasActiveSubscription() && auth()->user()->activeSubscription->package_id == $package->id)
+                                            <button disabled class="w-full py-4 px-6 rounded-xl bg-white/10 text-white/50 font-bold text-center cursor-not-allowed">
+                                                Current Plan
+                                            </button>
+                                        @else
+                                            <a href="{{ route('register', ['package_id' => $package->id]) }}" class="block">
+                                                <button class="w-full py-4 px-6 rounded-xl {{ $isPopular ? 'bg-gradient-to-r from-[#FCD535] to-[#00D9A5] text-[#1A1A1A]' : ($package->isFree() ? 'bg-[#FCD535] text-[#1A1A1A]' : 'bg-white/10 text-white hover:bg-white/20') }} font-bold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg {{ $isPopular ? 'hover:shadow-[#FCD535]/30' : '' }}">
+                                                    {{ $package->isFree() ? 'Start Free Trial' : 'Choose Plan' }}
+                                                </button>
+                                            </a>
+                                        @endif
+                                    @else
+                                        <a href="{{ route('register', ['package_id' => $package->id]) }}" class="block">
+                                            <button class="w-full py-4 px-6 rounded-xl {{ $isPopular ? 'bg-gradient-to-r from-[#FCD535] to-[#00D9A5] text-[#1A1A1A]' : ($package->isFree() ? 'bg-[#FCD535] text-[#1A1A1A]' : 'bg-white/10 text-white hover:bg-white/20') }} font-bold transition-all duration-300 hover:scale-[1.02] hover:shadow-lg {{ $isPopular ? 'hover:shadow-[#FCD535]/30' : '' }}">
+                                                {{ $package->isFree() ? 'Start Free Trial' : 'Choose Plan' }}
+                                            </button>
+                                        </a>
+                                    @endauth
+                                </div>
                             </div>
                         </div>
-
-                        @if($package->features && count($package->features) > 0)
-                            <ul class="space-y-3 mb-8">
-                                @php
-                                    $features = $package->features ?? [];
-                                    $isOldFormat = is_array($features) && isset($features[0]) && is_string($features[0]);
-                                @endphp
-                                
-                                @if($isOldFormat)
-                                    @foreach($features as $feature)
-                                        <li class="text-white/70 text-sm flex items-start">
-                                            <svg class="w-5 h-5 text-[#FCD535] mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            <span>{{ $feature }}</span>
-                                        </li>
-                                    @endforeach
-                                @else
-                                    @if(isset($features['instances']))
-                                        <li class="text-white/70 text-sm flex items-start">
-                                            <svg class="w-5 h-5 text-[#FCD535] mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            <span>
-                                                @if($features['instances']['limit'] == -1)
-                                                    Unlimited Instances
-                                                @else
-                                                    {{ $features['instances']['limit'] }} Instance{{ $features['instances']['limit'] != 1 ? 's' : '' }}
-                                                @endif
-                                            </span>
-                                        </li>
-                                    @endif
-                                    @if(isset($features['messages']))
-                                        <li class="text-white/70 text-sm flex items-start">
-                                            <svg class="w-5 h-5 text-[#FCD535] mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            <span>
-                                                @if($features['messages']['limit'] == -1)
-                                                    Unlimited Messages
-                                                @else
-                                                    {{ number_format($features['messages']['limit']) }} Messages
-                                                @endif
-                                                @if($features['messages']['period'] != 'lifetime')
-                                                    / {{ ucfirst($features['messages']['period']) }}
-                                                @endif
-                                            </span>
-                                        </li>
-                                    @endif
-                                    @if(isset($features['api_calls']))
-                                        <li class="text-white/70 text-sm flex items-start">
-                                            <svg class="w-5 h-5 text-[#FCD535] mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            <span>
-                                                @if($features['api_calls']['limit'] == -1)
-                                                    Unlimited API Calls
-                                                @else
-                                                    {{ number_format($features['api_calls']['limit']) }} API Calls
-                                                @endif
-                                                @if($features['api_calls']['period'] != 'lifetime')
-                                                    / {{ ucfirst($features['api_calls']['period']) }}
-                                                @endif
-                                            </span>
-                                        </li>
-                                    @endif
-                                    @if(isset($features['api_keys']))
-                                        <li class="text-white/70 text-sm flex items-start">
-                                            <svg class="w-5 h-5 text-[#FCD535] mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            <span>
-                                                @if($features['api_keys']['limit'] == -1)
-                                                    Unlimited API Keys
-                                                @else
-                                                    {{ $features['api_keys']['limit'] }} API Key{{ $features['api_keys']['limit'] != 1 ? 's' : '' }}
-                                                @endif
-                                            </span>
-                                        </li>
-                                    @endif
-                                @endif
-                            </ul>
-                        @endif
-
-                        <div class="pt-6 border-t border-white/5">
-                            @auth
-                                @if(auth()->user()->hasActiveSubscription() && auth()->user()->activeSubscription->package_id == $package->id)
-                                    <x-button variant="outline" size="md" class="w-full" disabled>
-                                        Current Plan
-                                    </x-button>
-                                @else
-                                    <a href="{{ route('register', ['package_id' => $package->id]) }}">
-                                        <x-button variant="{{ $package->isFree() ? 'primary' : 'secondary' }}" size="md" class="w-full">
-                                            {{ $package->isFree() ? 'Start Free Trial' : 'Choose Plan' }}
-                                        </x-button>
-                                    </a>
-                                @endif
-                            @else
-                                <a href="{{ route('register', ['package_id' => $package->id]) }}">
-                                    <x-button variant="{{ $package->isFree() ? 'primary' : 'secondary' }}" size="md" class="w-full">
-                                        {{ $package->isFree() ? 'Start Free Trial' : 'Choose Plan' }}
-                                    </x-button>
-                                </a>
-                            @endauth
-                        </div>
-                    </x-card>
+                    </div>
                 @endforeach
+            </div>
+            
+            <!-- Money Back Guarantee -->
+            <div class="text-center mt-16">
+                <div class="inline-flex items-center gap-3 px-6 py-3 bg-[#252525]/50 backdrop-blur-sm border border-white/10 rounded-full">
+                    <svg class="w-6 h-6 text-[#00D9A5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <span class="text-white/70">30-Day Money Back Guarantee</span>
+                    <span class="text-white/30">•</span>
+                    <span class="text-white/70">Cancel Anytime</span>
+                </div>
             </div>
         </div>
     </section>

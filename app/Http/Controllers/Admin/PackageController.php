@@ -202,6 +202,23 @@ class PackageController extends Controller
             ];
         }
 
+        // Bot Builder Features
+        $features['bot_type'] = $request->input('bot_type', 'simple');
+
+        // Bot Rules
+        if ($request->has('bot_rules_limit') && $request->bot_rules_limit !== '' && $request->bot_rules_limit !== null) {
+            $features['bot_rules'] = [
+                'limit' => (int) $request->bot_rules_limit,
+                'period' => $request->bot_rules_period ?? 'lifetime',
+            ];
+        }
+
+        // Bot Feature Toggles
+        $features['bot_menus'] = $request->has('bot_menus') && $request->bot_menus;
+        $features['bot_buttons'] = $request->has('bot_buttons') && $request->bot_buttons;
+        $features['bot_analytics'] = $request->has('bot_analytics') && $request->bot_analytics;
+        $features['priority_support'] = $request->has('priority_support') && $request->priority_support;
+
         return $features;
     }
 }

@@ -1,15 +1,46 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $user = auth()->user();
+    $featureLimitService = app(\App\Services\FeatureLimitService::class);
+    $usageStats = $featureLimitService->getFeatureUsageStats($user);
+    $instanceUsage = $usageStats['instances'] ?? null;
+    $currentCount = $instances->count();
+    $limit = $instanceUsage['limit'] ?? null;
+    $isUnlimited = $instanceUsage['is_unlimited'] ?? false;
+@endphp
+
 <div class="space-y-6">
-    <div class="flex items-center justify-between mb-8">
-        <div>
-            <h1 class="text-3xl font-bold text-white mb-2">Instances</h1>
-            <p class="text-white/70">Manage your WhatsApp instances</p>
+    <!-- Modern Header with Gradient -->
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#3B82F6] via-[#6366F1] to-[#8B5CF6] p-8 mb-8 shadow-2xl">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyMCIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+                    <svg class="w-10 h-10 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    WhatsApp Instances
+                </h1>
+                <p class="text-white/90 text-lg">Manage your WhatsApp connections</p>
+            </div>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <!-- Usage Indicator -->
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
+                    <p class="text-white/70 text-xs uppercase tracking-wide mb-1">Usage</p>
+                    <p class="text-white font-bold text-lg">
+                        {{ $currentCount }} / {{ $isUnlimited ? '∞' : ($limit ?? '∞') }}
+                    </p>
+                </div>
+                <x-button variant="primary" size="md" onclick="openCreateInstanceModal()" class="shadow-lg">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Create Instance
+                </x-button>
+            </div>
         </div>
-        <x-button variant="primary" size="md" onclick="openCreateInstanceModal()">
-            Create Instance
-        </x-button>
     </div>
 
     @if(session('success'))

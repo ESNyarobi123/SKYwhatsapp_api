@@ -1,11 +1,51 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $user = auth()->user();
+    $totalMessages = $user->messages()->count();
+    $inboundMessages = $user->messages()->where('direction', 'inbound')->count();
+    $outboundMessages = $user->messages()->where('direction', 'outbound')->count();
+    $connectedInstances = $user->instances()->where('status', 'connected')->count();
+@endphp
+
 <div class="h-[calc(100vh-120px)] flex flex-col">
-    <!-- Header -->
-    <div class="mb-4">
-        <h1 class="text-3xl font-bold text-white mb-2">Messages</h1>
-        <p class="text-white/70">Chat with your contacts</p>
+    <!-- Modern Header with Gradient -->
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#10B981] via-[#059669] to-[#047857] p-6 mb-4 shadow-2xl">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyMCIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-white mb-1 flex items-center gap-3">
+                    <svg class="w-8 h-8 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    Messages
+                </h1>
+                <p class="text-white/80">Real-time WhatsApp conversations</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- Stats Cards -->
+                <div class="bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
+                    <p class="text-white/70 text-xs">Total</p>
+                    <p class="text-white font-bold text-xl">{{ number_format($totalMessages) }}</p>
+                </div>
+                <div class="bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
+                    <p class="text-blue-200 text-xs">↓ Received</p>
+                    <p class="text-white font-bold text-xl">{{ number_format($inboundMessages) }}</p>
+                </div>
+                <div class="bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
+                    <p class="text-green-200 text-xs">↑ Sent</p>
+                    <p class="text-white font-bold text-xl">{{ number_format($outboundMessages) }}</p>
+                </div>
+                <div class="bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
+                    <p class="text-white/70 text-xs">Connected</p>
+                    <p class="text-white font-bold text-xl flex items-center gap-1">
+                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        {{ $connectedInstances }}
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- WhatsApp-like Two-Pane Layout -->

@@ -2,9 +2,18 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-white mb-2">Usage</h1>
-        <p class="text-white/70">Track your API usage and statistics</p>
+    <!-- Modern Header with Gradient -->
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#06B6D4] via-[#0891B2] to-[#0D9488] p-8 mb-8 shadow-2xl">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyMCIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+        <div class="relative z-10">
+            <h1 class="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+                <svg class="w-10 h-10 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Usage & Analytics
+            </h1>
+            <p class="text-white/90 text-lg">Track your API usage, statistics, and feature limits</p>
+        </div>
     </div>
 
     <!-- Usage Stats Cards -->
@@ -48,7 +57,7 @@
                         $limit = $featureStat['limit'];
                         $isUnlimited = $featureStat['is_unlimited'] ?? false;
                         
-                        if ($isUnlimited || $limit === null) {
+                        if ($isUnlimited || $limit === null || $limit === 0) {
                             $percentage = 0;
                             $progressColor = '#10B981';
                         } else {
@@ -59,13 +68,13 @@
                     <div class="p-4 bg-gradient-to-br from-[#1A1A1A] to-[#252525] rounded-lg border border-white/10">
                         <div class="flex justify-between items-center mb-3">
                             <h3 class="text-white font-semibold">{{ $featureNameLabel }}</h3>
-                            @if($isUnlimited || $limit === null)
+                            @if($isUnlimited || $limit === null || $limit === 0)
                                 <span class="text-xs text-[#10B981] font-medium">Unlimited</span>
                             @else
                                 <span class="text-xs text-white/60">{{ $usage }} / {{ $limit }} {{ $periodLabel }}</span>
                             @endif
                         </div>
-                        @if(!$isUnlimited && $limit !== null)
+                        @if(!$isUnlimited && $limit !== null && $limit > 0)
                             <div class="w-full bg-[#1A1A1A] rounded-full h-3 mb-2 overflow-hidden">
                                 <div class="h-full rounded-full transition-all duration-300" style="width: {{ $percentage }}%; background: linear-gradient(to right, {{ $progressColor }}, {{ $progressColor }}CC);"></div>
                             </div>
@@ -92,21 +101,7 @@
         </x-card>
     @endif
 
-    <!-- Rate Limits -->
-    @if(isset($stats['rate_limit']))
-        <x-card class="mb-8">
-            <h2 class="text-xl font-semibold text-white mb-4">Rate Limits</h2>
-            <div class="space-y-3">
-                <div class="flex justify-between items-center">
-                    <span class="text-white/70">Remaining Requests</span>
-                    <span class="text-[#FCD535] font-semibold">{{ $stats['rate_limit']['remaining'] ?? 0 }} / {{ $stats['rate_limit']['limit'] ?? 0 }}</span>
-                </div>
-                <div class="w-full bg-[#1A1A1A] rounded-full h-2">
-                    <div class="bg-[#FCD535] h-2 rounded-full" style="width: {{ ($stats['rate_limit']['remaining'] ?? 0) / ($stats['rate_limit']['limit'] ?? 1) * 100 }}%"></div>
-                </div>
-            </div>
-        </x-card>
-    @endif
+    {{-- Rate Limits section hidden - not currently in use --}}
 
     <!-- Usage Logs -->
     <x-card>

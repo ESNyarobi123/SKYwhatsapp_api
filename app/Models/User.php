@@ -90,6 +90,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get all bot replies for the user (through instances).
+     */
+    public function botReplies()
+    {
+        return $this->hasManyThrough(BotReply::class, Instance::class);
+    }
+
+    /**
      * Get all usage logs for the user.
      */
     public function usageLogs()

@@ -14,7 +14,11 @@ class DocumentationController extends Controller
     public function index()
     {
         $docPath = Setting::getValue('api_documentation_pdf');
-        $docUrl = $docPath ? Storage::url($docPath) : null;
+        
+        // Use public disk explicitly since file is stored there
+        $docUrl = $docPath && Storage::disk('public')->exists($docPath) 
+            ? Storage::disk('public')->url($docPath) 
+            : null;
 
         return view('documentation.index', compact('docUrl'));
     }

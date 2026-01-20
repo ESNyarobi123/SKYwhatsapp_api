@@ -1,19 +1,54 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $user = auth()->user();
+    $package = $user->activeSubscription?->package;
+    $features = $package?->features ?? [];
+    $botRulesLimit = $features['bot_rules']['limit'] ?? null;
+    $isUnlimitedRules = $botRulesLimit === -1 || $botRulesLimit === null;
+    $currentRulesCount = $botReplies->count();
+    $botType = $features['bot_type'] ?? 'simple';
+    $isAdvancedBot = $botType === 'advanced';
+@endphp
+
 <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-            <h1 class="text-3xl font-bold text-white mb-2">Bot Builder</h1>
-            <p class="text-white/70">Create smart auto-reply rules for your WhatsApp instances.</p>
+    <!-- Modern Header with Gradient -->
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F59E0B] via-[#F97316] to-[#EF4444] p-8 mb-8 shadow-2xl">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyMCIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+                    <svg class="w-10 h-10 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Bot Builder
+                </h1>
+                <p class="text-white/90 text-lg">Create smart auto-reply rules for your WhatsApp instances</p>
+            </div>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <!-- Bot Type Badge -->
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
+                    <p class="text-white/70 text-xs uppercase tracking-wide mb-1">Bot Type</p>
+                    <p class="text-white font-bold text-lg flex items-center gap-2">
+                        {{ $isAdvancedBot ? '🤖 Advanced' : '💬 Simple' }}
+                    </p>
+                </div>
+                <!-- Rules Usage -->
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
+                    <p class="text-white/70 text-xs uppercase tracking-wide mb-1">Rules</p>
+                    <p class="text-white font-bold text-lg">
+                        {{ $currentRulesCount }} / {{ $isUnlimitedRules ? '∞' : $botRulesLimit }}
+                    </p>
+                </div>
+                <button onclick="openCreateModal()" class="inline-flex items-center justify-center px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-bold rounded-xl transition-all transform hover:scale-105 border border-white/30 shadow-lg">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create New Rule
+                </button>
+            </div>
         </div>
-        <button onclick="openCreateModal()" class="inline-flex items-center justify-center px-6 py-3 bg-[#FCD535] text-[#1A1A1A] font-bold rounded-xl hover:bg-[#F0C420] transition-all transform hover:scale-105 shadow-lg shadow-[#FCD535]/20">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Create New Rule
-        </button>
     </div>
 
     @if(session('success'))

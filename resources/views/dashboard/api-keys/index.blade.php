@@ -1,15 +1,46 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $user = auth()->user();
+    $featureLimitService = app(\App\Services\FeatureLimitService::class);
+    $usageStats = $featureLimitService->getFeatureUsageStats($user);
+    $apiKeyUsage = $usageStats['api_keys'] ?? null;
+    $currentCount = $apiKeys->count();
+    $limit = $apiKeyUsage['limit'] ?? null;
+    $isUnlimited = $apiKeyUsage['is_unlimited'] ?? false;
+@endphp
+
 <div class="space-y-6">
-    <div class="flex items-center justify-between mb-8">
-        <div>
-            <h1 class="text-3xl font-bold text-white mb-2">API Keys</h1>
-            <p class="text-white/70">Manage your API keys for authentication</p>
+    <!-- Modern Header with Gradient -->
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#8B5CF6] via-[#A855F7] to-[#D946EF] p-8 mb-8 shadow-2xl">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyMCIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+                    <svg class="w-10 h-10 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                    API Keys
+                </h1>
+                <p class="text-white/90 text-lg">Manage authentication keys for WhatsApp API access</p>
+            </div>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <!-- Usage Indicator -->
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
+                    <p class="text-white/70 text-xs uppercase tracking-wide mb-1">Active Keys</p>
+                    <p class="text-white font-bold text-lg">
+                        {{ $currentCount }} / {{ $isUnlimited ? '∞' : ($limit ?? '∞') }}
+                    </p>
+                </div>
+                <x-button variant="primary" size="md" onclick="openCreateApiKeyModal()" class="shadow-lg">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Generate API Key
+                </x-button>
+            </div>
         </div>
-        <x-button variant="primary" size="md" onclick="openCreateApiKeyModal()">
-            Generate API Key
-        </x-button>
     </div>
 
     @if(session('success'))
