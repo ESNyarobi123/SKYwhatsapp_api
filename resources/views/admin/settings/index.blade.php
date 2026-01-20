@@ -331,6 +331,44 @@
                     <p class="mt-2 text-xs text-white/50">This will clear all caches and rebuild optimized versions</p>
                 </div>
             </div>
+
+            <div class="pt-6 border-t border-white/5">
+                <h3 class="text-lg font-semibold text-white mb-4">API Documentation</h3>
+                <p class="text-white/70 text-sm mb-4">Upload the PDF documentation that will be visible to users.</p>
+                
+                <form method="POST" action="{{ route('admin.settings.documentation.upload') }}" enctype="multipart/form-data" class="space-y-4">
+                    @csrf
+                    <div>
+                        <label for="api_documentation" class="block text-sm font-medium text-white/90 mb-2">
+                            Upload PDF Document
+                        </label>
+                        @php
+                            $currentDoc = \App\Models\Setting::getValue('api_documentation_pdf');
+                        @endphp
+                        
+                        @if($currentDoc)
+                            <div class="mb-3 flex items-center space-x-3 p-3 bg-[#1A1A1A] rounded-lg border border-white/10">
+                                <svg class="w-6 h-6 text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span class="text-sm text-white/70">Current file: {{ basename($currentDoc) }}</span>
+                                <a href="{{ asset('storage/' . $currentDoc) }}" target="_blank" class="text-xs text-[#FCD535] hover:underline">View</a>
+                            </div>
+                        @endif
+
+                        <input 
+                            type="file" 
+                            id="api_documentation" 
+                            name="document" 
+                            accept="application/pdf"
+                            class="w-full px-4 py-3 bg-[#1A1A1A] border border-white/10 rounded-lg text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#FCD535] file:text-[#1A1A1A] hover:file:bg-[#F0C420] cursor-pointer"
+                        >
+                    </div>
+                    <button type="submit" class="inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#1A1A1A] disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 text-base bg-[#FCD535] text-[#1A1A1A] hover:bg-[#F0C420] focus:ring-[#FCD535]">
+                        Upload Documentation
+                    </button>
+                </form>
+            </div>
         </x-card>
     </div>
 </div>

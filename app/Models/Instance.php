@@ -53,6 +53,14 @@ class Instance extends Model
     }
 
     /**
+     * Get all bot replies for this instance.
+     */
+    public function botReplies(): HasMany
+    {
+        return $this->hasMany(BotReply::class);
+    }
+
+    /**
      * Encrypt session data before saving.
      */
     public function setSessionDataAttribute($value): void

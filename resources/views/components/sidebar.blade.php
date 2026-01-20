@@ -121,6 +121,13 @@ $isAdmin = auth()->check() && auth()->user()->isAdmin();
                     <span class="sidebar-label">Messages</span>
                 </a>
 
+                <a href="{{ route('dashboard.bot.index') }}" class="group flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors sidebar-item {{ str_starts_with($currentRoute, 'dashboard.bot') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/70 hover:bg-white/5 hover:text-white' }}" title="Bot Builder">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    <span class="sidebar-label">Bot Builder</span>
+                </a>
+
                 <a href="{{ route('dashboard.api-keys') }}" class="group flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors sidebar-item {{ $currentRoute === 'dashboard.api-keys' ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/70 hover:bg-white/5 hover:text-white' }}" title="API Keys">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />

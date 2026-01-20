@@ -356,4 +356,26 @@ class InternalController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get active bot replies for an instance.
+     */
+    public function getBotReplies(Request $request, Instance $instance): JsonResponse
+    {
+        // Ensure the instance belongs to the authenticated user (via API key)
+        // Note: Internal API is authenticated via shared secret/key, not per-user.
+        // But we can check if the instance exists.
+        
+        $replies = $instance->botReplies()
+            ->where('is_active', true)
+            ->select(['keyword', 'match_type', 'reply_type', 'reply_content'])
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'replies' => $replies,
+            ],
+        ]);
+    }
 }

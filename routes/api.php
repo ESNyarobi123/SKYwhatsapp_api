@@ -102,4 +102,7 @@ Route::prefix('internal')->middleware([\App\Http\Middleware\AuthenticateInternal
     Route::get('/messages/pending', [InternalController::class, 'getPendingMessages'])->name('api.internal.messages.pending');
     Route::post('/messages', [InternalController::class, 'storeMessage'])->name('api.internal.messages.store');
     Route::post('/messages/{message}/status', [InternalController::class, 'updateMessageStatus'])->name('api.internal.messages.status');
+    
+    // Bot Rules for Node.js Service
+    Route::get('/instances/{instance}/bot-replies', [InternalController::class, 'getBotReplies'])->name('api.internal.instances.bot-replies');
 });

@@ -255,6 +255,41 @@ class SettingsController extends Controller
     }
 
     /**
+     * Upload API Documentation PDF.
+     */
+    public function uploadApiDocumentation(Request $request): JsonResponse|RedirectResponse
+    {
+        $request->validate([
+            'document' => ['required', 'file', 'mimes:pdf', 'max:10240'], // Max 10MB
+        ]);
+
+        if ($request->hasFile('document')) {
+            // Delete old document if exists
+            $oldDoc = Setting::getValue('api_documentation_pdf');
+            if ($oldDoc && Storage::disk('public')->exists($oldDoc)) {
+                Storage::disk('public')->delete($oldDoc);
+            }
+
+            // Store new document
+            $path = $request->file('document')->store('documentation', 'public');
+
+            Setting::setValue('api_documentation_pdf', $path, 'file', 'system');
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Documentation uploaded successfully.',
+                    'data' => ['path' => $path],
+                ]);
+            }
+
+            return redirect()->route('admin.settings')->with('success', 'Documentation uploaded successfully.');
+        }
+
+        return redirect()->route('admin.settings')->with('error', 'No document file provided.');
+    }
+
+    /**
      * Clear all caches.
      */
     private function clearAllCaches(): void

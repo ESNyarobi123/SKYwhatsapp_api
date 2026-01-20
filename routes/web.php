@@ -41,6 +41,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/usage', [UsageController::class, 'index'])->name('dashboard.usage');
         Route::get('/orders', [\App\Http\Controllers\PaymentController::class, 'orders'])->name('dashboard.orders');
         Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('dashboard.notifications.index');
+        
+        // Bot Builder Routes
+        Route::get('/bot', [\App\Http\Controllers\BotReplyController::class, 'index'])->name('dashboard.bot.index');
+        Route::post('/bot', [\App\Http\Controllers\BotReplyController::class, 'store'])->name('dashboard.bot.store');
+        Route::put('/bot/{botReply}', [\App\Http\Controllers\BotReplyController::class, 'update'])->name('dashboard.bot.update');
+        Route::delete('/bot/{botReply}', [\App\Http\Controllers\BotReplyController::class, 'destroy'])->name('dashboard.bot.destroy');
+
         Route::get('/support', [\App\Http\Controllers\SupportController::class, 'index'])->name('dashboard.support.index');
         Route::get('/support/create', [\App\Http\Controllers\SupportController::class, 'create'])->name('dashboard.support.create');
         Route::post('/support', [\App\Http\Controllers\SupportController::class, 'store'])->name('dashboard.support.store');
@@ -50,6 +57,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [SettingsController::class, 'index'])->name('dashboard.settings');
     Route::post('/settings', [SettingsController::class, 'update'])->name('dashboard.settings.update');
     Route::post('/packages/{package}/subscribe', [\App\Http\Controllers\SubscriptionController::class, 'subscribeToPackage'])->name('dashboard.packages.subscribe');
+    Route::get('/documentation', [\App\Http\Controllers\DocumentationController::class, 'index'])->name('dashboard.documentation');
 
         // Payment routes
         Route::get('/payment/select/{subscription}', [\App\Http\Controllers\PaymentController::class, 'select'])->name('dashboard.payment.select');
@@ -108,4 +116,14 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
     Route::get('/analytics', [\App\Http\Controllers\Admin\DashboardController::class, 'analytics'])->name('admin.analytics');
+    
+    // Admin Settings Routes
+    Route::get('/settings', [\App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('admin.settings');
+    Route::post('/settings/payment', [\App\Http\Controllers\Admin\SettingsController::class, 'updatePaymentSettings'])->name('admin.settings.payment.update');
+    Route::post('/settings/payment-method/toggle', [\App\Http\Controllers\Admin\SettingsController::class, 'togglePaymentMethod'])->name('admin.settings.payment-method.toggle');
+    Route::post('/settings/contact', [\App\Http\Controllers\Admin\SettingsController::class, 'updateContactSettings'])->name('admin.settings.contact.update');
+    Route::post('/settings/cache', [\App\Http\Controllers\Admin\SettingsController::class, 'clearCache'])->name('admin.settings.cache.clear');
+    Route::post('/settings/system/refresh', [\App\Http\Controllers\Admin\SettingsController::class, 'refreshSystem'])->name('admin.settings.system.refresh');
+    Route::post('/settings/trc20/screenshot', [\App\Http\Controllers\Admin\SettingsController::class, 'uploadTrc20Screenshot'])->name('admin.settings.trc20.screenshot');
+    Route::post('/settings/documentation/upload', [\App\Http\Controllers\Admin\SettingsController::class, 'uploadApiDocumentation'])->name('admin.settings.documentation.upload');
 });
