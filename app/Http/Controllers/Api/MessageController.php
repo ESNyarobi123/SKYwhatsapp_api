@@ -27,6 +27,10 @@ class MessageController extends Controller
             ->first();
 
         if (! $instance) {
+            \Log::error('Send Message Error: Instance not found', [
+                'instance_id' => $request->instance_id,
+                'user_id' => $user->id
+            ]);
             return response()->json([
                 'success' => false,
                 'error' => [
@@ -37,6 +41,10 @@ class MessageController extends Controller
         }
 
         if (! $instance->isConnected()) {
+            \Log::error('Send Message Error: Instance not connected', [
+                'instance_id' => $instance->id,
+                'status' => $instance->status
+            ]);
             return response()->json([
                 'success' => false,
                 'error' => [
