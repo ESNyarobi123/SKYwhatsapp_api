@@ -340,7 +340,7 @@ class InternalController extends Controller
     public function getPendingMessages(Request $request): JsonResponse
     {
         $messages = Message::where('direction', 'outbound')
-            ->where('status', 'sent')
+            ->where('status', 'pending')
             ->whereHas('instance', function ($query) {
                 $query->where('status', 'connected');
             })

@@ -24,7 +24,7 @@ class MessageService
             'instance_id' => $instance->id,
             'message_id' => 'msg_'.Str::random(32),
             'direction' => 'outbound',
-            'status' => 'sent',
+            'status' => 'pending',
             'to' => $to,
             'from' => $instance->phone_number ?? 'unknown',
             'body' => $body,

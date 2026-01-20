@@ -112,7 +112,7 @@ class MessageController extends Controller
                     'created_at' => $message->created_at,
                 ],
             ],
-            'message' => 'Message queued for sending.',
+            'message' => 'Message queued for sending (pending).',
         ], 201);
     }
 
