@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
 <div class="h-[calc(100vh-120px)] flex flex-col">
@@ -682,24 +682,41 @@ function selectMessage(messageId, jid, instanceId, instanceName) {
     selectedMessage = message;
     
     // Extract contact info from message
-    const contactJID = message.direction === 'inbound' ? message.from : message.to;
+    // Use the original JID from the message (preserves @lid or @s.whatsapp.net suffix)
+    let contactJID = message.direction === 'inbound' ? message.from : message.to;
+    
+    // Check if metadata has original JID (from_jid or to_jid)
+    if (message.metadata) {
+        if (message.direction === 'inbound' && message.metadata.from_jid) {
+            contactJID = message.metadata.from_jid;
+        } else if (message.direction === 'outbound' && message.metadata.to_jid) {
+            contactJID = message.metadata.to_jid;
+        }
+    }
+    
+    // If contactJID still doesn't have a suffix (@lid, @s.whatsapp.net, etc.), use the passed jid parameter
+    // This ensures we use the original JID format for replies
+    if (contactJID && !contactJID.includes('@')) {
+        contactJID = jid || contactJID; // Use the jid parameter if contactJID has no suffix
+    }
+    
     const phoneNumber = extractPhoneNumber(contactJID);
     
-    if (!phoneNumber) return;
+    if (!phoneNumber && !contactJID) return;
     
     currentChatPhone = contactJID;
     currentChatInstanceId = instanceId;
     
-    const formattedPhone = formatPhoneNumber(phoneNumber);
+    const formattedPhone = phoneNumber ? formatPhoneNumber(phoneNumber) : (contactJID ? contactJID.replace(/@.*$/, '') : 'Unknown');
     
     // Update chat header
     document.getElementById('activeContactName').textContent = formattedPhone;
     document.getElementById('activeContactPhone').textContent = formattedPhone;
-    document.getElementById('activeContactInitial').textContent = phoneNumber.slice(-1) || '?';
+    document.getElementById('activeContactInitial').textContent = phoneNumber ? (phoneNumber.slice(-1) || '?') : (contactJID ? contactJID.slice(-1) : '?');
     
-    // Set form values
+    // Set form values - use original JID to preserve @lid or @s.whatsapp.net format
     document.getElementById('chatInstanceId').value = instanceId;
-    document.getElementById('chatToPhone').value = contactJID;
+    document.getElementById('chatToPhone').value = contactJID; // This preserves @lid or @s.whatsapp.net
     
     // Show chat area, hide empty state
     document.getElementById('emptyChatState').classList.add('hidden');
