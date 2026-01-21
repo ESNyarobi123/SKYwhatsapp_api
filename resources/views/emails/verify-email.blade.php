@@ -1,16 +1,21 @@
 @component('mail::message')
-# Welcome!
+# Welcome to {{ config('app.name') }}
 
-You have successfully created an account on {{ config('app.name') }}.
+Hi there,
 
-To get started with your account, please click the button below.
+Thanks for joining {{ config('app.name') }}.
+
+To continue using all features, there’s one final step waiting for you.
+You can review it anytime by visiting your account page.
+
+This message is for information purposes only.
 
 @component('mail::button', ['url' => $url])
-Get Started
+Open my account
 @endcomponent
 
-If you did not create an account, you can ignore this email.
+You are receiving this email because an account was created using this address.
+No personal information is requested by email.
 
-Thanks,<br>
-{{ config('app.name') }}
+&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
 @endcomponent
