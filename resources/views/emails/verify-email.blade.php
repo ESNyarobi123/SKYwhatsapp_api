@@ -1,12 +1,10 @@
 @component('mail::message')
-# Verify Your Email Address
+# Welcome to {{ config('app.name') }}!
 
-Hello!
-
-Please click the button below to verify your email address and activate your account.
+Thanks for signing up. Please confirm your account to get started.
 
 @component('mail::button', ['url' => $url])
-Verify Email Address
+Confirm Account
 @endcomponent
 
 If you did not create an account, no further action is required.

@@ -16,7 +16,7 @@ class CustomVerifyEmail extends VerifyEmail
     protected function buildMailMessage($url)
     {
         return (new MailMessage)
-            ->subject('Verify Email Address')
+            ->subject('Confirm your account')
             ->markdown('emails.verify-email', ['url' => $url]);
     }
 }
