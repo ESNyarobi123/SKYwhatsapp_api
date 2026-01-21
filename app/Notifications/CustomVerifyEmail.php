@@ -8,15 +8,16 @@ use Illuminate\Notifications\Messages\MailMessage;
 class CustomVerifyEmail extends VerifyEmail
 {
     /**
-     * Get the verify email notification mail message for the given URL.
+     * Get the mail representation of the notification.
      *
-     * @param  string  $url
-     * @return \Illuminate\Notifications\Messages\MailMessage
+     * @param  mixed  $notifiable
+     * @return \Illuminate\Mail\Mailable
      */
-    protected function buildMailMessage($url)
+    public function toMail($notifiable)
     {
-        return (new MailMessage)
-            ->subject('Welcome to ' . config('app.name'))
-            ->markdown('emails.verify-email', ['url' => $url]);
+        $verificationUrl = $this->verificationUrl($notifiable);
+
+        return (new \App\Mail\VerificationMail($verificationUrl))
+            ->to($notifiable->getEmailForVerification());
     }
 }
