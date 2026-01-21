@@ -18,9 +18,64 @@ class ApiKeyController extends Controller
     /**
      * List all API keys for the authenticated user.
      */
+    /**
+     * Check if user is authorized to perform action on API key.
+     */
+    private function authorizeApiKeyAction($user, $permission, $apiKey = null)
+    {
+        // 1. Check direct ownership (if key provided)
+        if ($apiKey && $apiKey->user_id === $user->id) {
+            return true;
+        }
+
+        // 2. Check team membership
+        if ($user->current_team_id) {
+            $team = $user->currentTeam;
+            
+            // If key provided, it must belong to team owner
+            if ($apiKey && $team && $apiKey->user_id !== $team->owner_id) {
+                return false;
+            }
+
+            // Check if user has permission in this team
+            if ($team) {
+                $member = $team->members()->where('user_id', $user->id)->first();
+                if ($member && $member->hasPermission($permission)) {
+                    return true;
+                }
+            }
+        }
+
+        // If no team and no direct ownership (or key not provided but checking general permission)
+        if (!$apiKey && !$user->current_team_id) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * List all API keys for the authenticated user.
+     */
     public function index(Request $request)
     {
-        $apiKeys = $request->user()->apiKeys()->latest()->get();
+        $user = $request->user();
+        
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
+        // Check permission
+        if (!$this->authorizeApiKeyAction($user, 'api_keys.view')) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
+
+        $apiKeys = $owner->apiKeys()->latest()->get();
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -49,8 +104,25 @@ class ApiKeyController extends Controller
     {
         $user = $request->user();
 
-        // Check if user has active subscription
-        if (! $user->hasActiveSubscription()) {
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
+        // Check permission
+        if (!$this->authorizeApiKeyAction($user, 'api_keys.create')) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'UNAUTHORIZED',
+                    'message' => 'You do not have permission to create API keys.',
+                ],
+            ], 403);
+        }
+
+        // Check if OWNER has active subscription
+        if (! $owner->hasActiveSubscription()) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -65,10 +137,10 @@ class ApiKeyController extends Controller
                 ->with('error', 'Active subscription is required to create API keys. Please select a package first.');
         }
 
-        // Check if user can create more API keys
-        if (! $user->canCreateApiKey()) {
+        // Check if OWNER can create more API keys
+        if (! $owner->canCreateApiKey()) {
             $featureLimitService = app(\App\Services\FeatureLimitService::class);
-            $usage = $featureLimitService->getFeatureUsageStats($user);
+            $usage = $featureLimitService->getFeatureUsageStats($owner);
             $apiKeyUsage = $usage['api_keys'] ?? null;
 
             $message = 'API key limit reached for your plan.';
@@ -92,14 +164,14 @@ class ApiKeyController extends Controller
         $expiresAt = $request->expires_at ? new \DateTime($request->expires_at) : null;
 
         $result = $this->apiKeyService->create(
-            $user,
+            $owner, // Create for OWNER
             $request->name,
             $expiresAt
         );
 
-        // Increment API key usage after successful creation
+        // Increment API key usage for OWNER
         $featureLimitService = app(\App\Services\FeatureLimitService::class);
-        $featureLimitService->incrementUsage($user, 'api_keys');
+        $featureLimitService->incrementUsage($owner, 'api_keys');
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -132,7 +204,15 @@ class ApiKeyController extends Controller
      */
     public function rotate(Request $request, ApiKey $apiKey): JsonResponse
     {
-        if ($apiKey->user_id !== $request->user()->id) {
+        $user = $request->user();
+        
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
+        if ($apiKey->user_id !== $owner->id) {
             return response()->json([
                 'success' => false,
                 'error' => [
@@ -140,6 +220,11 @@ class ApiKeyController extends Controller
                     'message' => 'You do not own this API key.',
                 ],
             ], 403);
+        }
+
+        // Check permission (rotate is effectively edit/create)
+        if (!$this->authorizeApiKeyAction($user, 'api_keys.create', $apiKey)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $request->validate([
@@ -168,7 +253,15 @@ class ApiKeyController extends Controller
      */
     public function destroy(Request $request, ApiKey $apiKey): JsonResponse
     {
-        if ($apiKey->user_id !== $request->user()->id) {
+        $user = $request->user();
+        
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
+        if ($apiKey->user_id !== $owner->id) {
             return response()->json([
                 'success' => false,
                 'error' => [
@@ -176,6 +269,13 @@ class ApiKeyController extends Controller
                     'message' => 'You do not own this API key.',
                 ],
             ], 403);
+        }
+
+        // Check permission (delete is usually restricted, but for API keys maybe same as create?)
+        // Let's assume 'api_keys.create' implies management, or we need a specific 'api_keys.delete'
+        // TeamMember model has 'api_keys.create' but not explicit delete. Let's use create for now as management.
+        if (!$this->authorizeApiKeyAction($user, 'api_keys.create', $apiKey)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $this->apiKeyService->revoke($apiKey);

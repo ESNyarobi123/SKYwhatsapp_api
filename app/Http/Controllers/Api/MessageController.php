@@ -19,18 +19,61 @@ class MessageController extends Controller
     /**
      * Send a message (queued for Node.js processing).
      */
+    /**
+     * Check if user is authorized to perform action on message/instance.
+     */
+    private function authorizeMessageAction($user, $permission, $instance = null)
+    {
+        // 1. Check direct ownership (if instance provided)
+        if ($instance && $instance->user_id === $user->id) {
+            return true;
+        }
+
+        // 2. Check team membership
+        if ($user->current_team_id) {
+            $team = $user->currentTeam;
+            
+            // If instance provided, it must belong to team owner
+            if ($instance && $team && $instance->user_id !== $team->owner_id) {
+                return false;
+            }
+
+            // Check if user has permission in this team
+            if ($team) {
+                $member = $team->members()->where('user_id', $user->id)->first();
+                if ($member && $member->hasPermission($permission)) {
+                    return true;
+                }
+            }
+        }
+
+        // If no team and no direct ownership (or instance not provided but checking general permission)
+        // For general permission without instance, we assume self-action unless in team
+        if (!$instance && !$user->current_team_id) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Send a message (queued for Node.js processing).
+     */
     public function send(SendMessageRequest $request): JsonResponse
     {
         $user = $request->user();
+        
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
         $instance = Instance::where('id', $request->instance_id)
-            ->where('user_id', $user->id)
+            ->where('user_id', $owner->id)
             ->first();
 
         if (! $instance) {
-            \Log::error('Send Message Error: Instance not found', [
-                'instance_id' => $request->instance_id,
-                'user_id' => $user->id
-            ]);
             return response()->json([
                 'success' => false,
                 'error' => [
@@ -40,11 +83,18 @@ class MessageController extends Controller
             ], 404);
         }
 
+        // Check permission
+        if (!$this->authorizeMessageAction($user, 'messages.send', $instance)) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'UNAUTHORIZED',
+                    'message' => 'You do not have permission to send messages.',
+                ],
+            ], 403);
+        }
+
         if (! $instance->isConnected()) {
-            \Log::error('Send Message Error: Instance not connected', [
-                'instance_id' => $instance->id,
-                'status' => $instance->status
-            ]);
             return response()->json([
                 'success' => false,
                 'error' => [
@@ -54,10 +104,10 @@ class MessageController extends Controller
             ], 400);
         }
 
-        // Check if user can send messages (messages per day limit)
-        if (! $user->canSendMessage()) {
+        // Check if OWNER can send messages (messages per day limit)
+        if (! $owner->canSendMessage()) {
             $featureLimitService = app(\App\Services\FeatureLimitService::class);
-            $usage = $featureLimitService->getFeatureUsageStats($user);
+            $usage = $featureLimitService->getFeatureUsageStats($owner);
             $messageUsage = $usage['messages'] ?? null;
 
             $message = 'Message limit reached for your plan.';
@@ -87,19 +137,16 @@ class MessageController extends Controller
         }
 
         $message = $this->messageService->createOutboundMessage(
-            $user,
+            $owner, // Create message for OWNER
             $instance,
             $request->to,
             $request->body ?? ($request->hasFile('image') ? '[Image]' : ''),
             $metadata
         );
 
-        // Increment message usage after successful message creation
+        // Increment message usage for OWNER
         $featureLimitService = app(\App\Services\FeatureLimitService::class);
-        $featureLimitService->incrementUsage($user, 'messages');
-
-        // Note: In production, this would queue a job for Node.js service to process
-        // For now, we just create the message record
+        $featureLimitService->incrementUsage($owner, 'messages');
 
         return response()->json([
             'success' => true,
@@ -123,11 +170,21 @@ class MessageController extends Controller
     {
         $user = $request->user();
         
-        // Debug: Check total messages for user
-        $totalMessages = $user->messages()->count();
-        \Log::info('Total messages for user '.$user->id.': '.$totalMessages);
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
+        // Check permission
+        if (!$this->authorizeMessageAction($user, 'messages.view')) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+            abort(403, 'Unauthorized');
+        }
         
-        $query = $user->messages()->with('instance')->latest();
+        $query = $owner->messages()->with('instance')->latest();
 
         if ($request->has('instance_id')) {
             $query->where('instance_id', $request->instance_id);
@@ -137,32 +194,19 @@ class MessageController extends Controller
             $query->where('direction', $request->direction);
         }
 
-        // Count before filtering groups
-        $beforeFilterCount = $query->count();
-        \Log::info('Messages before group filter: '.$beforeFilterCount);
-
         // Filter out group messages - only show private messages
-        // Groups have @g.us suffix (always groups)
-        // @lid can be private messages (WhatsApp service already filters groups before sending)
-        // Only filter @g.us, allow @lid as WhatsApp service handles group filtering
         $query->where(function ($q) {
             $q->where(function ($subQ) {
-                // from field should not contain @g.us (always groups)
                 $subQ->where('from', 'not like', '%@g.us');
             })->where(function ($subQ) {
-                // to field should not contain @g.us (always groups)
                 $subQ->where('to', 'not like', '%@g.us');
             });
         });
 
-        // Count after filtering groups
-        $afterFilterCount = $query->count();
-        \Log::info('Messages after group filter: '.$afterFilterCount);
-
         $messages = $query->paginate($request->get('per_page', 50));
-        $instances = $user->instances()->get();
         
-        \Log::info('Final messages count: '.$messages->total());
+        // Get instances for the OWNER
+        $instances = $owner->instances()->get();
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -187,7 +231,15 @@ class MessageController extends Controller
      */
     public function show(Request $request, Message $message): JsonResponse
     {
-        if ($message->user_id !== $request->user()->id) {
+        $user = $request->user();
+        
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
+        if ($message->user_id !== $owner->id) {
             return response()->json([
                 'success' => false,
                 'error' => [
@@ -195,6 +247,10 @@ class MessageController extends Controller
                     'message' => 'You do not own this message.',
                 ],
             ], 403);
+        }
+
+        if (!$this->authorizeMessageAction($user, 'messages.view')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $message->load('instance');

@@ -97,15 +97,21 @@ class InstanceController extends Controller
             return redirect()->route('dashboard.instances')->with('error', $message);
         }
 
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
         $instance = $this->instanceService->create(
-            $user,
+            $owner,
             $request->name,
             $request->phone_number
         );
 
-        // Increment instance usage after successful creation
+        // Increment instance usage for the OWNER
         $featureLimitService = app(\App\Services\FeatureLimitService::class);
-        $featureLimitService->incrementUsage($user, 'instances');
+        $featureLimitService->incrementUsage($owner, 'instances');
 
         if ($request->expectsJson()) {
             return response()->json([

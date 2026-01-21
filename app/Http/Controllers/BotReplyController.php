@@ -9,15 +9,64 @@ use Illuminate\Http\Request;
 class BotReplyController extends Controller
 {
     /**
+     * Check if user is authorized to perform action on bot reply.
+     */
+    private function authorizeBotAction($user, $permission, $botReply = null)
+    {
+        // 1. Check direct ownership (if reply provided)
+        if ($botReply && $botReply->instance->user_id === $user->id) {
+            return true;
+        }
+
+        // 2. Check team membership
+        if ($user->current_team_id) {
+            $team = $user->currentTeam;
+            
+            // If reply provided, it must belong to team owner
+            if ($botReply && $team && $botReply->instance->user_id !== $team->owner_id) {
+                return false;
+            }
+
+            // Check if user has permission in this team
+            if ($team) {
+                $member = $team->members()->where('user_id', $user->id)->first();
+                if ($member && $member->hasPermission($permission)) {
+                    return true;
+                }
+            }
+        }
+
+        // If no team and no direct ownership (or reply not provided but checking general permission)
+        if (!$botReply && !$user->current_team_id) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $instances = $request->user()->instances()->get();
+        $user = $request->user();
         
-        // Filter by instance if provided, otherwise show all user's bot replies
-        $query = BotReply::whereHas('instance', function ($q) use ($request) {
-            $q->where('user_id', $request->user()->id);
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
+        // Check permission
+        if (!$this->authorizeBotAction($user, 'bot.view')) {
+            abort(403, 'Unauthorized');
+        }
+
+        $instances = $owner->instances()->get();
+        
+        // Filter by instance if provided, otherwise show all owner's bot replies
+        $query = BotReply::whereHas('instance', function ($q) use ($owner) {
+            $q->where('user_id', $owner->id);
         });
 
         if ($request->instance_id) {
@@ -34,6 +83,19 @@ class BotReplyController extends Controller
      */
     public function store(Request $request)
     {
+        $user = $request->user();
+
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
+        // Check permission
+        if (!$this->authorizeBotAction($user, 'bot.edit')) {
+            return back()->withErrors(['error' => 'You do not have permission to create bot rules.']);
+        }
+
         $request->validate([
             'instance_id' => 'required|exists:instances,id',
             'keyword' => 'required|string|max:255',
@@ -41,23 +103,19 @@ class BotReplyController extends Controller
             'match_type' => 'required|in:exact,contains',
         ]);
 
-        // Verify ownership
+        // Verify ownership (must belong to OWNER)
         $instance = Instance::where('id', $request->instance_id)
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $owner->id)
             ->firstOrFail();
 
-        // Check Plan Limits
-        $user = $request->user();
-        if ($user->hasActiveSubscription()) {
-            $package = $user->activeSubscription->package;
+        // Check Plan Limits (check OWNER's plan)
+        if ($owner->hasActiveSubscription()) {
+            $package = $owner->activeSubscription->package;
             $limit = $package->getFeatureLimit('bot_rules');
             
             if ($limit !== null) {
-                // Count total rules across all instances for this user
-                // Or per instance? Usually per user or per package.
-                // Let's assume the limit is "Total Bot Rules" per user.
-                $currentCount = BotReply::whereHas('instance', function ($q) use ($user) {
-                    $q->where('user_id', $user->id);
+                $currentCount = BotReply::whereHas('instance', function ($q) use ($owner) {
+                    $q->where('user_id', $owner->id);
                 })->count();
 
                 if ($currentCount >= $limit) {
@@ -82,9 +140,22 @@ class BotReplyController extends Controller
      */
     public function update(Request $request, BotReply $botReply)
     {
-        // Verify ownership
-        if ($botReply->instance->user_id !== $request->user()->id) {
+        $user = $request->user();
+        
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
+        // Verify ownership (must belong to OWNER)
+        if ($botReply->instance->user_id !== $owner->id) {
             abort(403);
+        }
+
+        // Check permission
+        if (!$this->authorizeBotAction($user, 'bot.edit', $botReply)) {
+             return back()->withErrors(['error' => 'You do not have permission to edit bot rules.']);
         }
 
         $request->validate([
@@ -104,9 +175,22 @@ class BotReplyController extends Controller
      */
     public function destroy(Request $request, BotReply $botReply)
     {
-        // Verify ownership
-        if ($botReply->instance->user_id !== $request->user()->id) {
+        $user = $request->user();
+        
+        // Determine owner (Team Owner or Self)
+        $owner = $user;
+        if ($user->current_team_id && $user->currentTeam) {
+            $owner = $user->currentTeam->owner;
+        }
+
+        // Verify ownership (must belong to OWNER)
+        if ($botReply->instance->user_id !== $owner->id) {
             abort(403);
+        }
+
+        // Check permission
+        if (!$this->authorizeBotAction($user, 'bot.edit', $botReply)) {
+             return back()->withErrors(['error' => 'You do not have permission to delete bot rules.']);
         }
 
         $botReply->delete();
