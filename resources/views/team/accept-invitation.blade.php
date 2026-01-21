@@ -29,14 +29,14 @@
                             <div class="d-flex justify-content-center gap-3">
                                 <form method="POST" action="{{ route('dashboard.team.invitation.accept', $invitation->id) }}">
                                     @csrf
-                                    <button type="submit" class="btn btn-primary btn-lg">
+                                    <button type="submit" class="btn btn-primary btn-lg" style="background-color: #0d6efd; border: 1px solid #0d6efd; color: white; padding: 10px 20px;">
                                         Accept Invitation
                                     </button>
                                 </form>
 
                                 <form method="POST" action="{{ route('dashboard.team.invitation.decline', $invitation->id) }}">
                                     @csrf
-                                    <button type="submit" class="btn btn-danger btn-lg">
+                                    <button type="submit" class="btn btn-danger btn-lg" style="background-color: #dc3545; border: 1px solid #dc3545; color: white; padding: 10px 20px;">
                                         Decline
                                     </button>
                                 </form>
