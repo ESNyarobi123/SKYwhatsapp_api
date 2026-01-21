@@ -20,7 +20,23 @@ class InstanceController extends Controller
      */
     public function index(Request $request)
     {
-        $instances = $request->user()->instances()->latest()->get();
+        $user = $request->user();
+        
+        // If user is part of a team, show team instances
+        if ($user->current_team_id) {
+            // Assuming instances are linked to the team owner for now, 
+            // or we need to check if instances table has team_id.
+            // Based on current schema, instances belong to user_id.
+            // So we should show instances of the team owner.
+            $team = $user->currentTeam;
+            if ($team) {
+                $instances = Instance::where('user_id', $team->owner_id)->latest()->get();
+            } else {
+                $instances = $user->instances()->latest()->get();
+            }
+        } else {
+            $instances = $user->instances()->latest()->get();
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
