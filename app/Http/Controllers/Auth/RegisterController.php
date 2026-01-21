@@ -14,7 +14,24 @@ use Illuminate\Auth\Events\Registered;
 
 class RegisterController extends Controller
 {
-    // ... (keep existing code)
+    /**
+     * Show registration form.
+     */
+    public function showRegistrationForm()
+    {
+        $packageId = request()->get('package_id');
+        $package = null;
+
+        if ($packageId) {
+            $package = Package::where('id', $packageId)->where('is_active', true)->first();
+        }
+
+        return response()
+            ->view('auth.register', compact('package'))
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+    }
 
     public function register(RegisterRequest $request)
     {
