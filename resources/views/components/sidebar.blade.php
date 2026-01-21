@@ -163,6 +163,13 @@ $isAdmin = auth()->check() && auth()->user()->isAdmin();
                     <span class="sidebar-label">Orders</span>
                 </a>
 
+                <a href="{{ route('dashboard.packages') }}" class="group flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors sidebar-item {{ $currentRoute === 'dashboard.packages' ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/70 hover:bg-white/5 hover:text-white' }}" title="Plans">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <span class="sidebar-label">Plans</span>
+                </a>
+
                 <a href="{{ route('dashboard.usage') }}" class="group flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors sidebar-item {{ $currentRoute === 'dashboard.usage' ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/70 hover:bg-white/5 hover:text-white' }}" title="Usage">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />

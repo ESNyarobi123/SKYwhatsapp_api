@@ -25,12 +25,17 @@
         <div id="main-content" class="flex-1 flex flex-col transition-all duration-300">
             {{-- Dashboard Toggle & Avatar (no header) --}}
             @if(auth()->check() && (request()->routeIs('dashboard*') || request()->routeIs('admin.*')))
-                <div class="fixed top-0 right-0 z-50 flex items-center space-x-3 p-3 md:p-4">
+                {{-- Sidebar Toggle Button (Left) --}}
+                <div class="fixed top-0 left-0 z-50 p-3 md:p-4">
                     <button id="sidebar-toggle" type="button" class="p-2 rounded-lg text-white/70 hover:text-[#FCD535] hover:bg-white/5 transition-colors" aria-label="Toggle sidebar">
                         <svg id="sidebar-toggle-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
+                </div>
+                
+                {{-- User Avatar and Notifications (Right) --}}
+                <div class="fixed top-0 right-0 z-50 flex items-center space-x-3 p-3 md:p-4">
                     
                     @if(!request()->routeIs('admin.*'))
                         {{-- Notification Icon --}}

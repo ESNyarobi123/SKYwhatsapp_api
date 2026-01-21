@@ -40,6 +40,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/webhooks', [WebhookController::class, 'index'])->name('dashboard.webhooks');
         Route::get('/usage', [UsageController::class, 'index'])->name('dashboard.usage');
         Route::get('/orders', [\App\Http\Controllers\PaymentController::class, 'orders'])->name('dashboard.orders');
+        Route::get('/packages', function () {
+            $packages = \App\Models\Package::where('is_active', true)->orderBy('sort_order')->get();
+            return view('dashboard.packages.index', compact('packages'));
+        })->name('dashboard.packages');
         Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('dashboard.notifications.index');
         
         // Bot Builder Routes
