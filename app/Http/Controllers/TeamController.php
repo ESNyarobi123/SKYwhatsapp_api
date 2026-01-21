@@ -194,7 +194,7 @@ class TeamController extends Controller
         // Switch user's current team to the new team
         $user->update(['current_team_id' => $invitation->team_id]);
 
-        return redirect()->route('dashboard.index')
+        return redirect()->route('dashboard')
             ->with('success', "You've joined {$invitation->team->name}!");
     }
 
