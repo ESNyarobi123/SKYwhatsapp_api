@@ -99,7 +99,7 @@ return [
 
         'verification' => [
             'transport' => 'smtp',
-            'host' => env('VERIFICATION_MAIL_HOST', 'mail.orange.ericksky.online'),
+            'host' => env('VERIFICATION_MAIL_HOST', '109.123.240.147'),
             'port' => env('VERIFICATION_MAIL_PORT', 465),
             'encryption' => env('VERIFICATION_MAIL_ENCRYPTION', 'ssl'),
             'username' => env('VERIFICATION_MAIL_USERNAME', 'verify@orange.ericksky.online'),
