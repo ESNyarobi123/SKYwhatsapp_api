@@ -52,6 +52,52 @@ Route::middleware('auth')->group(function () {
         Route::put('/bot/{botReply}', [\App\Http\Controllers\BotReplyController::class, 'update'])->name('dashboard.bot.update');
         Route::delete('/bot/{botReply}', [\App\Http\Controllers\BotReplyController::class, 'destroy'])->name('dashboard.bot.destroy');
 
+        // Analytics Routes
+        Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('dashboard.analytics');
+        Route::get('/analytics/export', [\App\Http\Controllers\AnalyticsController::class, 'exportCsv'])->name('dashboard.analytics.export');
+
+        // Message Templates Routes
+        Route::get('/templates', [\App\Http\Controllers\MessageTemplateController::class, 'index'])->name('dashboard.templates.index');
+        Route::post('/templates', [\App\Http\Controllers\MessageTemplateController::class, 'store'])->name('dashboard.templates.store');
+        Route::put('/templates/{template}', [\App\Http\Controllers\MessageTemplateController::class, 'update'])->name('dashboard.templates.update');
+        Route::delete('/templates/{template}', [\App\Http\Controllers\MessageTemplateController::class, 'destroy'])->name('dashboard.templates.destroy');
+        Route::post('/templates/{template}/use', [\App\Http\Controllers\MessageTemplateController::class, 'use'])->name('dashboard.templates.use');
+        Route::post('/templates/{template}/duplicate', [\App\Http\Controllers\MessageTemplateController::class, 'duplicate'])->name('dashboard.templates.duplicate');
+
+        // Message Scheduler Routes
+        Route::get('/scheduler', [\App\Http\Controllers\ScheduledMessageController::class, 'index'])->name('dashboard.scheduler.index');
+        Route::post('/scheduler', [\App\Http\Controllers\ScheduledMessageController::class, 'store'])->name('dashboard.scheduler.store');
+        Route::put('/scheduler/{scheduledMessage}', [\App\Http\Controllers\ScheduledMessageController::class, 'update'])->name('dashboard.scheduler.update');
+        Route::post('/scheduler/{scheduledMessage}/cancel', [\App\Http\Controllers\ScheduledMessageController::class, 'cancel'])->name('dashboard.scheduler.cancel');
+        Route::post('/scheduler/{scheduledMessage}/retry', [\App\Http\Controllers\ScheduledMessageController::class, 'retry'])->name('dashboard.scheduler.retry');
+        Route::delete('/scheduler/{scheduledMessage}', [\App\Http\Controllers\ScheduledMessageController::class, 'destroy'])->name('dashboard.scheduler.destroy');
+
+        // Bot Templates Routes
+        Route::get('/bot-templates', [\App\Http\Controllers\BotTemplateController::class, 'index'])->name('dashboard.bot-templates.index');
+        Route::get('/bot-templates/{botTemplate}', [\App\Http\Controllers\BotTemplateController::class, 'show'])->name('dashboard.bot-templates.show');
+        Route::post('/bot-templates/{botTemplate}/import', [\App\Http\Controllers\BotTemplateController::class, 'import'])->name('dashboard.bot-templates.import');
+        Route::get('/bot-templates/{botTemplate}/preview', [\App\Http\Controllers\BotTemplateController::class, 'preview'])->name('dashboard.bot-templates.preview');
+
+        // Webhook Logs Routes
+        Route::get('/webhook-logs', [\App\Http\Controllers\WebhookLogController::class, 'index'])->name('dashboard.webhook-logs.index');
+        Route::get('/webhook-logs/{webhookLog}', [\App\Http\Controllers\WebhookLogController::class, 'show'])->name('dashboard.webhook-logs.show');
+        Route::get('/webhook-logs/{webhookLog}/details', [\App\Http\Controllers\WebhookLogController::class, 'details'])->name('dashboard.webhook-logs.details');
+        Route::post('/webhook-logs/{webhookLog}/retry', [\App\Http\Controllers\WebhookLogController::class, 'retry'])->name('dashboard.webhook-logs.retry');
+        Route::post('/webhook-logs/clear', [\App\Http\Controllers\WebhookLogController::class, 'clear'])->name('dashboard.webhook-logs.clear');
+
+        // Team Management Routes
+        Route::get('/team', [\App\Http\Controllers\TeamController::class, 'index'])->name('dashboard.team.index');
+        Route::post('/team', [\App\Http\Controllers\TeamController::class, 'store'])->name('dashboard.team.store');
+        Route::put('/team/{team}', [\App\Http\Controllers\TeamController::class, 'update'])->name('dashboard.team.update');
+        Route::delete('/team/{team}', [\App\Http\Controllers\TeamController::class, 'destroy'])->name('dashboard.team.destroy');
+        Route::post('/team/{team}/invite', [\App\Http\Controllers\TeamController::class, 'invite'])->name('dashboard.team.invite');
+        Route::post('/team/invitation/{invitation}/accept', [\App\Http\Controllers\TeamController::class, 'acceptInvitation'])->name('dashboard.team.invitation.accept');
+        Route::post('/team/invitation/{invitation}/decline', [\App\Http\Controllers\TeamController::class, 'declineInvitation'])->name('dashboard.team.invitation.decline');
+        Route::delete('/team/{team}/invitation/{invitation}', [\App\Http\Controllers\TeamController::class, 'cancelInvitation'])->name('dashboard.team.invitation.cancel');
+        Route::put('/team/{team}/member/{member}', [\App\Http\Controllers\TeamController::class, 'updateMember'])->name('dashboard.team.member.update');
+        Route::delete('/team/{team}/member/{member}', [\App\Http\Controllers\TeamController::class, 'removeMember'])->name('dashboard.team.member.remove');
+        Route::delete('/team/{team}/leave', [\App\Http\Controllers\TeamController::class, 'leave'])->name('dashboard.team.leave');
+
         Route::get('/support', [\App\Http\Controllers\SupportController::class, 'index'])->name('dashboard.support.index');
         Route::get('/support/create', [\App\Http\Controllers\SupportController::class, 'create'])->name('dashboard.support.create');
         Route::post('/support', [\App\Http\Controllers\SupportController::class, 'store'])->name('dashboard.support.store');

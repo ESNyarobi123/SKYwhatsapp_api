@@ -92,7 +92,7 @@
                         </div>
                         <p class="text-white text-2xl font-bold mb-1">{{ $currentPackage->name ?? 'Pro Plan' }}</p>
                         @php
-                            $daysRemaining = now()->diffInDays($activeSubscription->expires_at, false);
+                            $daysRemaining = floor(now()->diffInDays($activeSubscription->expires_at, false));
                         @endphp
                         @if($daysRemaining > 0)
                             <p class="text-white/70 text-sm">{{ $daysRemaining }} days remaining</p>
