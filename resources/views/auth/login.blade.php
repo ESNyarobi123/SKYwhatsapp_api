@@ -58,7 +58,7 @@
                         <label for="remember" class="ml-2 block text-sm text-white/70">Remember me</label>
                     </div>
 
-                    <a href="#" class="text-sm text-[#FCD535] hover:text-[#F0C420] transition-colors">
+                    <a href="{{ route('password.forgot') }}" class="text-sm text-[#FCD535] hover:text-[#F0C420] transition-colors">
                         Forgot password?
                     </a>
                 </div>
