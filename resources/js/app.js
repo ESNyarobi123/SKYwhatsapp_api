@@ -1,7 +1,13 @@
 import './bootstrap';
+import Alpine from 'alpinejs';
+import collapse from '@alpinejs/collapse';
+
+Alpine.plugin(collapse);
+window.Alpine = Alpine;
+Alpine.start();
 
 // Copy to clipboard utility
-window.copyToClipboard = function(text) {
+window.copyToClipboard = function (text) {
     navigator.clipboard.writeText(text).then(() => {
         showToast('Copied to clipboard!', 'success');
     }).catch(err => {
@@ -17,9 +23,9 @@ function showToast(message, type = 'success') {
     toast.className = 'fixed top-4 right-4 px-6 py-3 rounded-lg text-white shadow-lg z-50 transition-all duration-300';
     toast.style.backgroundColor = bgColor;
     toast.textContent = message;
-    
+
     document.body.appendChild(toast);
-    
+
     setTimeout(() => {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);
@@ -40,7 +46,7 @@ function toggleSidebar() {
     if (isMobile) {
         // Mobile: toggle visibility (overlay)
         const isOpen = sidebar.classList.contains('translate-x-0');
-        
+
         if (isOpen) {
             // Close sidebar
             sidebar.classList.remove('translate-x-0');
@@ -61,7 +67,7 @@ function toggleSidebar() {
     } else {
         // Desktop: toggle collapsed state (icons-only)
         const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
-        
+
         if (isCollapsed) {
             // Expand sidebar
             sidebar.classList.remove('sidebar-collapsed');
@@ -114,7 +120,7 @@ function handleResize() {
     const isMobile = window.innerWidth < 768;
 
     const mainContent = document.getElementById('main-content');
-    
+
     if (isMobile) {
         // Mobile: ensure sidebar is hidden and remove collapsed state
         sidebar.classList.remove('sidebar-collapsed');
@@ -134,7 +140,7 @@ function handleResize() {
 }
 
 // Form submission with fetch API (if needed)
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Initialize sidebar on page load
     initSidebar();
 
@@ -147,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle overlay click (close sidebar on mobile)
     const overlay = document.getElementById('sidebar-overlay');
     if (overlay) {
-        overlay.addEventListener('click', function() {
+        overlay.addEventListener('click', function () {
             if (window.innerWidth < 768) {
                 toggleSidebar();
             }
@@ -156,14 +162,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle window resize
     let resizeTimeout;
-    window.addEventListener('resize', function() {
+    window.addEventListener('resize', function () {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(handleResize, 250);
     });
 
     // Handle modals (close on outside click)
     document.querySelectorAll('[id$="Modal"]').forEach(modal => {
-        modal.addEventListener('click', function(e) {
+        modal.addEventListener('click', function (e) {
             if (e.target === modal) {
                 const closeFunc = modal.getAttribute('data-close-func');
                 if (closeFunc && window[closeFunc]) {
@@ -176,15 +182,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // User menu dropdown toggle
     const userMenuButton = document.getElementById('user-menu-button');
     const userMenuDropdown = document.getElementById('user-menu-dropdown');
-    
+
     if (userMenuButton && userMenuDropdown) {
-        userMenuButton.addEventListener('click', function(e) {
+        userMenuButton.addEventListener('click', function (e) {
             e.stopPropagation();
             userMenuDropdown.classList.toggle('hidden');
         });
 
         // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             const container = document.getElementById('user-menu-container');
             if (container && !container.contains(e.target)) {
                 userMenuDropdown.classList.add('hidden');
