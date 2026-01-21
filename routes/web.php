@@ -25,6 +25,15 @@ Route::post('/register', [RegisterController::class, 'register']);
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Password Reset Routes (Code-based)
+use App\Http\Controllers\Auth\PasswordResetController;
+Route::get('/forgot-password', [PasswordResetController::class, 'showForgotForm'])->name('password.forgot');
+Route::post('/forgot-password', [PasswordResetController::class, 'sendCode'])->name('password.email');
+Route::get('/reset-password/verify', [PasswordResetController::class, 'showCodeForm'])->name('password.code.form');
+Route::post('/reset-password/verify', [PasswordResetController::class, 'verifyCode'])->name('password.code.verify');
+Route::get('/reset-password', [PasswordResetController::class, 'showResetForm'])->name('password.reset.form');
+Route::post('/reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
+
 // Public invitation route
 Route::get('/team/invitation/{invitation}', [\App\Http\Controllers\TeamController::class, 'showInvitation'])->name('team.invitation.show');
 
