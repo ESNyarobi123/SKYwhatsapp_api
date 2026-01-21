@@ -8,6 +8,7 @@ use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\TeamInvitationMail;
 
 class TeamController extends Controller
 {
@@ -131,11 +132,31 @@ class TeamController extends Controller
             'invited_by' => $user->id,
         ]);
 
-        // TODO: Send invitation email
-        // Mail::to($validated['email'])->send(new TeamInvitationMail($invitation));
+        // Send invitation email
+        Mail::to($validated['email'])->send(new TeamInvitationMail($invitation));
 
         return redirect()->route('dashboard.team.index')
             ->with('success', "Invitation sent to {$validated['email']}!");
+    }
+
+    /**
+     * Show the invitation acceptance page.
+     */
+    public function showInvitation(TeamInvitation $invitation)
+    {
+        $user = auth()->user();
+
+        // Verify invitation is for this user
+        if ($invitation->email !== $user->email) {
+            abort(403);
+        }
+
+        if (!$invitation->isValid()) {
+            return redirect()->route('dashboard.team.index')
+                ->withErrors(['error' => 'This invitation has expired or was already used.']);
+        }
+
+        return view('team.accept-invitation', compact('invitation'));
     }
 
     /**

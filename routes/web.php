@@ -91,6 +91,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/team/{team}', [\App\Http\Controllers\TeamController::class, 'update'])->name('dashboard.team.update');
         Route::delete('/team/{team}', [\App\Http\Controllers\TeamController::class, 'destroy'])->name('dashboard.team.destroy');
         Route::post('/team/{team}/invite', [\App\Http\Controllers\TeamController::class, 'invite'])->name('dashboard.team.invite');
+        Route::get('/team/invitation/{invitation}', [\App\Http\Controllers\TeamController::class, 'showInvitation'])->name('team.invitation.show');
         Route::post('/team/invitation/{invitation}/accept', [\App\Http\Controllers\TeamController::class, 'acceptInvitation'])->name('dashboard.team.invitation.accept');
         Route::post('/team/invitation/{invitation}/decline', [\App\Http\Controllers\TeamController::class, 'declineInvitation'])->name('dashboard.team.invitation.decline');
         Route::delete('/team/{team}/invitation/{invitation}', [\App\Http\Controllers\TeamController::class, 'cancelInvitation'])->name('dashboard.team.invitation.cancel');
