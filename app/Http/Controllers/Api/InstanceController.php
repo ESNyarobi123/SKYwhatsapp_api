@@ -122,16 +122,42 @@ class InstanceController extends Controller
     }
 
     /**
+     * Check if user is authorized to perform action on instance.
+     */
+    private function authorizeInstanceAction($user, $instance, $permission)
+    {
+        // 1. Check direct ownership
+        if ($instance->user_id === $user->id) {
+            return true;
+        }
+
+        // 2. Check team membership
+        if ($user->current_team_id) {
+            $team = $user->currentTeam;
+            // Instance must belong to team owner
+            if ($team && $instance->user_id === $team->owner_id) {
+                // Check if user has permission in this team
+                $member = $team->members()->where('user_id', $user->id)->first();
+                if ($member && $member->hasPermission($permission)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Get instance details.
      */
     public function show(Request $request, Instance $instance): JsonResponse
     {
-        if ($instance->user_id !== $request->user()->id) {
+        if (!$this->authorizeInstanceAction($request->user(), $instance, 'instances.view')) {
             return response()->json([
                 'success' => false,
                 'error' => [
                     'code' => 'UNAUTHORIZED',
-                    'message' => 'You do not own this instance.',
+                    'message' => 'You do not have permission to view this instance.',
                 ],
             ], 403);
         }
@@ -149,12 +175,12 @@ class InstanceController extends Controller
      */
     public function qr(Request $request, Instance $instance): JsonResponse
     {
-        if ($instance->user_id !== $request->user()->id) {
+        if (!$this->authorizeInstanceAction($request->user(), $instance, 'instances.view')) {
             return response()->json([
                 'success' => false,
                 'error' => [
                     'code' => 'UNAUTHORIZED',
-                    'message' => 'You do not own this instance.',
+                    'message' => 'You do not have permission to view this instance.',
                 ],
             ], 403);
         }
@@ -193,12 +219,12 @@ class InstanceController extends Controller
      */
     public function connect(Request $request, Instance $instance): JsonResponse
     {
-        if ($instance->user_id !== $request->user()->id) {
+        if (!$this->authorizeInstanceAction($request->user(), $instance, 'instances.edit')) {
             return response()->json([
                 'success' => false,
                 'error' => [
                     'code' => 'UNAUTHORIZED',
-                    'message' => 'You do not own this instance.',
+                    'message' => 'You do not have permission to connect this instance.',
                 ],
             ], 403);
         }
@@ -233,12 +259,12 @@ class InstanceController extends Controller
      */
     public function stop(Request $request, Instance $instance): JsonResponse
     {
-        if ($instance->user_id !== $request->user()->id) {
+        if (!$this->authorizeInstanceAction($request->user(), $instance, 'instances.edit')) {
             return response()->json([
                 'success' => false,
                 'error' => [
                     'code' => 'UNAUTHORIZED',
-                    'message' => 'You do not own this instance.',
+                    'message' => 'You do not have permission to stop this instance.',
                 ],
             ], 403);
         }
@@ -280,12 +306,12 @@ class InstanceController extends Controller
      */
     public function start(Request $request, Instance $instance): JsonResponse
     {
-        if ($instance->user_id !== $request->user()->id) {
+        if (!$this->authorizeInstanceAction($request->user(), $instance, 'instances.edit')) {
             return response()->json([
                 'success' => false,
                 'error' => [
                     'code' => 'UNAUTHORIZED',
-                    'message' => 'You do not own this instance.',
+                    'message' => 'You do not have permission to start this instance.',
                 ],
             ], 403);
         }
@@ -328,12 +354,12 @@ class InstanceController extends Controller
      */
     public function restart(Request $request, Instance $instance): JsonResponse
     {
-        if ($instance->user_id !== $request->user()->id) {
+        if (!$this->authorizeInstanceAction($request->user(), $instance, 'instances.edit')) {
             return response()->json([
                 'success' => false,
                 'error' => [
                     'code' => 'UNAUTHORIZED',
-                    'message' => 'You do not own this instance.',
+                    'message' => 'You do not have permission to restart this instance.',
                 ],
             ], 403);
         }
@@ -395,12 +421,12 @@ class InstanceController extends Controller
      */
     public function destroy(Request $request, Instance $instance): JsonResponse
     {
-        if ($instance->user_id !== $request->user()->id) {
+        if (!$this->authorizeInstanceAction($request->user(), $instance, 'instances.delete')) {
             return response()->json([
                 'success' => false,
                 'error' => [
                     'code' => 'UNAUTHORIZED',
-                    'message' => 'You do not own this instance.',
+                    'message' => 'You do not have permission to delete this instance.',
                 ],
             ], 403);
         }
