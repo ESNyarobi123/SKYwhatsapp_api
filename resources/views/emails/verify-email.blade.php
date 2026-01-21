@@ -1,16 +1,16 @@
 @component('mail::message')
-# Hello there!
+# Welcome!
 
-We're excited to have you on board. To ensure we can stay in touch, please confirm that this is your correct email address.
+You have successfully created an account on {{ config('app.name') }}.
 
-It only takes a second:
+To get started with your account, please click the button below.
 
 @component('mail::button', ['url' => $url])
-Yes, this is my email
+Get Started
 @endcomponent
 
-If you didn't sign up for an account, you can safely ignore this message.
+If you did not create an account, you can ignore this email.
 
-Cheers,<br>
-The {{ config('app.name') }} Team
+Thanks,<br>
+{{ config('app.name') }}
 @endcomponent
