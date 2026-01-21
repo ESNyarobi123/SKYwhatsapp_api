@@ -3,20 +3,29 @@
 @section('content')
 @php
     $user = auth()->user();
-    $instancesCount = $user->instances()->count();
-    $messagesCount = $user->messages()->count();
-    $apiKeysCount = $user->apiKeys()->where('is_active', true)->count();
-    $activeSubscription = $user->activeSubscription;
+    
+    // Determine target user for data fetching (Team Owner or Self)
+    $targetUser = $user;
+    if ($user->current_team_id && $user->currentTeam) {
+        $targetUser = $user->currentTeam->owner;
+    }
+
+    $instancesCount = $targetUser->instances()->count();
+    $messagesCount = $targetUser->messages()->count();
+    $apiKeysCount = $targetUser->apiKeys()->where('is_active', true)->count();
+    
+    // For subscription, we should probably check the team owner's subscription if in a team
+    $activeSubscription = $targetUser->activeSubscription;
     $hasActiveSubscription = $activeSubscription && $activeSubscription->isActive();
     $currentPackage = $activeSubscription?->package;
     $features = $currentPackage?->features ?? [];
     
     // Get feature limits
     $featureLimitService = app(\App\Services\FeatureLimitService::class);
-    $usageStats = $featureLimitService->getFeatureUsageStats($user);
+    $usageStats = $featureLimitService->getFeatureUsageStats($targetUser);
     
-    // Pending payment
-    $pendingPayment = $user->payments()
+    // Pending payment (check for target user)
+    $pendingPayment = $targetUser->payments()
         ->where('status', 'pending')
         ->whereHas('subscription', function($query) {
             $query->where('status', 'pending');
@@ -27,7 +36,7 @@
     // Bot features
     $botType = $features['bot_type'] ?? 'simple';
     $isAdvancedBot = $botType === 'advanced';
-    $botRulesCount = $user->botReplies()->count();
+    $botRulesCount = $targetUser->botReplies()->count();
 @endphp
 
 <div class="space-y-6">
