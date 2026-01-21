@@ -144,16 +144,29 @@ class TeamController extends Controller
      */
     public function showInvitation(TeamInvitation $invitation)
     {
+        if ($invitation->hasExpired()) {
+             // If user is logged in, redirect to dashboard with error
+             if (auth()->check()) {
+                 return redirect()->route('dashboard.team.index')
+                    ->withErrors(['error' => 'This invitation has expired.']);
+             }
+             // If guest, show a generic expired view or just the login page with error
+             return redirect()->route('login')->withErrors(['error' => 'This invitation has expired.']);
+        }
+
+        if (!auth()->check()) {
+            return view('team.accept-invitation', compact('invitation'));
+        }
+
         $user = auth()->user();
 
         // Verify invitation is for this user
         if ($invitation->email !== $user->email) {
-            abort(403);
-        }
-
-        if (!$invitation->isValid()) {
-            return redirect()->route('dashboard.team.index')
-                ->withErrors(['error' => 'This invitation has expired or was already used.']);
+            // Instead of aborting, we can show the view with a warning message
+            // or just let them see the view but disable the accept button (handled in view)
+            // But for security, maybe we just show the view but warn them.
+             return view('team.accept-invitation', compact('invitation'))
+                ->with('warning', 'You are logged in as ' . $user->email . ' but this invitation is for ' . $invitation->email . '.');
         }
 
         return view('team.accept-invitation', compact('invitation'));
