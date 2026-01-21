@@ -10,32 +10,15 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
+use Illuminate\Auth\Events\Registered;
+
 class RegisterController extends Controller
 {
-    /**
-     * Show registration form.
-     */
-    public function showRegistrationForm()
-    {
-        $packageId = request()->get('package_id');
-        $package = null;
+    // ... (keep existing code)
 
-        if ($packageId) {
-            $package = Package::where('id', $packageId)->where('is_active', true)->first();
-        }
-
-        return response()
-            ->view('auth.register', compact('package'))
-            ->header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
-            ->header('Pragma', 'no-cache')
-            ->header('Expires', '0');
-    }
-
-    /**
-     * Handle user registration.
-     */
     public function register(RegisterRequest $request)
     {
+        // ... (keep existing user creation)
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -43,6 +26,7 @@ class RegisterController extends Controller
             'role' => 'user',
         ]);
 
+        // ... (keep existing package logic)
         // Handle package selection if provided
         $packageId = $request->input('package_id');
         if ($packageId) {
@@ -62,6 +46,8 @@ class RegisterController extends Controller
                 ]);
             }
         }
+
+        event(new Registered($user));
 
         Auth::login($user);
 

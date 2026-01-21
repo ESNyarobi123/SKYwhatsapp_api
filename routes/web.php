@@ -28,8 +28,19 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 // Public invitation route
 Route::get('/team/invitation/{invitation}', [\App\Http\Controllers\TeamController::class, 'showInvitation'])->name('team.invitation.show');
 
-// Dashboard routes (protected)
+use App\Http\Controllers\Auth\VerificationController;
+
+// ... (existing routes)
+
+// Email Verification Routes
 Route::middleware('auth')->group(function () {
+    Route::get('/email/verify', [VerificationController::class, 'show'])->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'])->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+    Route::post('/email/verification-notification', [VerificationController::class, 'resend'])->middleware(['throttle:6,1'])->name('verification.send');
+});
+
+// Dashboard routes (protected & verified)
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
         $packages = \App\Models\Package::where('is_active', true)->orderBy('sort_order')->get();
         return view('dashboard.index', compact('packages'));
