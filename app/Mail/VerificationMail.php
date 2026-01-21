@@ -30,7 +30,9 @@ class VerificationMail extends Mailable
      */
     public function build()
     {
-        return $this->subject('Welcome — next steps inside')
+        return $this->mailer('verification')
+                    ->from(config('mail.mailers.verification.username'), config('app.name'))
+                    ->subject('Welcome — next steps inside')
                     ->markdown('emails.verify-email');
     }
 }

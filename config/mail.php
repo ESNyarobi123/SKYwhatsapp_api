@@ -97,6 +97,17 @@ return [
             'retry_after' => 60,
         ],
 
+        'verification' => [
+            'transport' => 'smtp',
+            'host' => env('VERIFICATION_MAIL_HOST', 'mail.orange.ericksky.online'),
+            'port' => env('VERIFICATION_MAIL_PORT', 465),
+            'encryption' => env('VERIFICATION_MAIL_ENCRYPTION', 'ssl'),
+            'username' => env('VERIFICATION_MAIL_USERNAME', 'verify@orange.ericksky.online'),
+            'password' => env('VERIFICATION_MAIL_PASSWORD'),
+            'timeout' => null,
+            'local_domain' => env('VERIFICATION_MAIL_EHLO_DOMAIN', 'orange.ericksky.online'),
+        ],
+
     ],
 
     /*
