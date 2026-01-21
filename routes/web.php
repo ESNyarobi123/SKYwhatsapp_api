@@ -32,10 +32,10 @@ use App\Http\Controllers\Auth\VerificationController;
 
 // ... (existing routes)
 
-// Email Verification Routes
+// Email Verification Routes (Code-based)
 Route::middleware('auth')->group(function () {
     Route::get('/email/verify', [VerificationController::class, 'show'])->name('verification.notice');
-    Route::get('/email/verify/{id}/{hash}', [VerificationController::class, 'verify'])->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+    Route::post('/email/verify', [VerificationController::class, 'verifyCode'])->middleware(['throttle:6,1'])->name('verification.verify');
     Route::post('/email/verification-notification', [VerificationController::class, 'resend'])->middleware(['throttle:6,1'])->name('verification.send');
 });
 
