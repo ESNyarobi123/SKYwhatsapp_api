@@ -6,7 +6,7 @@
  * ili kuona kama server inaweza kujifikia yenyewe.
  */
 
-$webhookUrl = 'http://127.0.0.1/integration/webhook.php'; // Use Localhost directly
+$webhookUrl = 'https://orange.ericksky.online/integration/webhook.php'; // Public URL
 
 // Data ya kutuma (Simulated WhatsApp Message)
 $data = [
@@ -15,12 +15,12 @@ $data = [
         'id' => 'TEST_' . uniqid(),
         'from' => '255700000000',
         'to' => '255712345678',
-        'body' => 'Hii ni TEST message (Localhost Fix).',
+        'body' => 'Hii ni TEST message (Public URL + IPv4).',
         'timestamp' => time()
     ]
 ];
 
-echo "<h1>Webhook Connectivity Test (Localhost Fix)</h1>";
+echo "<h1>Webhook Connectivity Test (Public URL + IPv4)</h1>";
 echo "<p>Target URL: <strong>$webhookUrl</strong></p>";
 
 // Initialize cURL
@@ -28,12 +28,10 @@ $ch = curl_init($webhookUrl);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'Host: orange.ericksky.online' // Force Host Header
-]);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Ignore SSL for test
 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4); // Force IPv4 (Solution that worked for API)
 
 // Execute
 $response = curl_exec($ch);
