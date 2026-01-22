@@ -6,7 +6,7 @@
  * ili kuona kama server inaweza kujifikia yenyewe.
  */
 
-$webhookUrl = 'https://orange.ericksky.online/integration/webhook.php'; // Public URL
+$webhookUrl = ''; // Public URL
 
 // Data ya kutuma (Simulated WhatsApp Message)
 $data = [

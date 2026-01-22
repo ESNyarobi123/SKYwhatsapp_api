@@ -48,6 +48,13 @@ class SendWebhook implements ShouldQueue
 
         try {
             $response = Http::timeout(10)
+                ->withOptions([
+                    'curl' => [
+                        CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4, // Force IPv4 to fix Loopback/DNS issues
+                        CURLOPT_SSL_VERIFYPEER => false,        // Optional: Ignore SSL for internal loopback
+                        CURLOPT_SSL_VERIFYHOST => 0,
+                    ]
+                ])
                 ->withHeaders([
                     'X-Signature' => $signature,
                     'X-Event' => $this->event,
