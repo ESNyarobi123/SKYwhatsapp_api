@@ -166,7 +166,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/api/api-keys', [ApiKeyController::class, 'store'])->name('api.api-keys.store');
     Route::delete('/api/api-keys/{api_key}', [ApiKeyController::class, 'destroy'])->name('api.api-keys.destroy');
     
-    Route::post('/api/v1/messages/send', [MessageController::class, 'send'])->name('api.messages.send');
     Route::get('/api/messages', [MessageController::class, 'index'])->name('api.messages.index');
     Route::get('/api/messages/{message}', [MessageController::class, 'show'])->name('api.messages.show');
     
