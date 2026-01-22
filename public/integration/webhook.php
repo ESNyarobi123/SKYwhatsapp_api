@@ -14,8 +14,12 @@ header("Content-Type: application/json");
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
 
-// Log file path
+// Log file paths
 $logFile = __DIR__ . '/webhook_messages.json';
+$debugFile = __DIR__ . '/webhook_debug.txt';
+
+// 1. LOG RAW DATA (Kwa ajili ya debugging)
+file_put_contents($debugFile, date('[Y-m-d H:i:s] ') . $input . "\n\n", FILE_APPEND);
 
 if ($data) {
     // Soma messages zilizopo
@@ -24,12 +28,26 @@ if ($data) {
         $currentMessages = json_decode(file_get_contents($logFile), true) ?? [];
     }
     
-    // Ongeza message mpya (kama ni inbound message)
+    // 2. CHECK EVENT TYPE
+    // Kubali 'message.inbound' au kama kuna data ya message moja kwa moja
+    $isMessage = false;
+    $msgData = [];
+
     if (isset($data['event']) && $data['event'] === 'message.inbound') {
+        $isMessage = true;
+        $msgData = $data['data'];
+    } elseif (isset($data['type']) && $data['type'] === 'message') {
+        // Fallback structure
+        $isMessage = true;
+        $msgData = $data;
+    }
+
+    if ($isMessage) {
         $newMessage = [
-            'id' => $data['data']['id'] ?? uniqid(),
-            'from' => $data['data']['from'] ?? 'Unknown',
-            'body' => $data['data']['body'] ?? '',
+            'id' => $msgData['id'] ?? uniqid(),
+            'from' => $msgData['from'] ?? 'Unknown',
+            'to' => $msgData['to'] ?? 'Me',
+            'body' => $msgData['body'] ?? $msgData['message'] ?? '(No Content)',
             'timestamp' => date('Y-m-d H:i:s'),
             'type' => 'inbound'
         ];
