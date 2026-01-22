@@ -55,7 +55,8 @@ class WebhookService
             ->get();
 
         foreach ($webhooks as $webhook) {
-            SendWebhook::dispatch($webhook, $event, $payload);
+            // Use dispatchSync to ensure immediate delivery without queue worker
+            SendWebhook::dispatchSync($webhook, $event, $payload);
         }
     }
 }

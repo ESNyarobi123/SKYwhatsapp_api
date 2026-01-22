@@ -189,7 +189,7 @@ class InternalController extends Controller
 
         // Dispatch Webhook
         $webhookService = app(\App\Services\WebhookService::class);
-        $webhookService->dispatch($instance->user_id, 'message.inbound', $message->toArray());
+        $webhookService->dispatch('message.inbound', $instance->user, $message->toArray(), $instance);
 
         return response()->json([
             'success' => true,
