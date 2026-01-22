@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'subscription' => \App\Http\Middleware\CheckSubscription::class,
             'rate.limit' => \App\Http\Middleware\CheckRateLimit::class,
             'admin' => \App\Http\Middleware\CheckAdmin::class,
+            'log.usage' => \App\Http\Middleware\LogApiUsage::class,
         ]);
 
         // Disable CSRF for API routes

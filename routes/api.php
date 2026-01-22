@@ -56,7 +56,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('api.v1.login');
     
     // Protected API routes
-    Route::middleware([\App\Http\Middleware\AuthenticateApiKey::class])->group(function () {
+    Route::middleware([\App\Http\Middleware\AuthenticateApiKey::class, 'log.usage'])->group(function () {
         // API key management
         Route::get('/api-keys', [ApiKeyController::class, 'index'])->name('api.v1.api-keys.index');
         Route::post('/api-keys', [ApiKeyController::class, 'store'])->name('api.v1.api-keys.store');
