@@ -65,6 +65,21 @@
                             @if($instance->phone_number)
                                 <p class="text-white/60 text-sm">{{ $instance->phone_number }}</p>
                             @endif
+                            <!-- Instance ID with Copy Button -->
+                            <div class="flex items-center gap-2 mt-2">
+                                <span class="text-white/40 text-xs">Instance ID:</span>
+                                <code class="bg-[#1A1A1A] text-[#FCD535] px-2 py-1 rounded text-xs font-mono">{{ $instance->id }}</code>
+                                <button 
+                                    onclick="copyInstanceId('{{ $instance->id }}')" 
+                                    class="text-white/50 hover:text-[#FCD535] transition-colors p-1 rounded hover:bg-white/5"
+                                    title="Copy Instance ID"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                </button>
+                                <span id="copyFeedback-{{ $instance->id }}" class="text-[#00D9A5] text-xs opacity-0 transition-opacity">Copied!</span>
+                            </div>
                         </div>
                         <x-badge variant="{{ $instance->status === 'connected' ? 'success' : ($instance->status === 'disconnected' ? 'error' : 'warning') }}">
                             {{ ucfirst($instance->status) }}
@@ -177,6 +192,47 @@
 <script>
 let qrPollInterval = null;
 let currentInstanceId = null;
+
+// Copy Instance ID to Clipboard
+function copyInstanceId(instanceId) {
+    navigator.clipboard.writeText(instanceId).then(() => {
+        // Show feedback
+        const feedbackEl = document.getElementById('copyFeedback-' + instanceId);
+        if (feedbackEl) {
+            feedbackEl.classList.remove('opacity-0');
+            feedbackEl.classList.add('opacity-100');
+            
+            // Hide feedback after 2 seconds
+            setTimeout(() => {
+                feedbackEl.classList.remove('opacity-100');
+                feedbackEl.classList.add('opacity-0');
+            }, 2000);
+        }
+    }).catch(err => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = instanceId;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            const feedbackEl = document.getElementById('copyFeedback-' + instanceId);
+            if (feedbackEl) {
+                feedbackEl.classList.remove('opacity-0');
+                feedbackEl.classList.add('opacity-100');
+                setTimeout(() => {
+                    feedbackEl.classList.remove('opacity-100');
+                    feedbackEl.classList.add('opacity-0');
+                }, 2000);
+            }
+        } catch (e) {
+            alert('Copy failed. Instance ID: ' + instanceId);
+        }
+        document.body.removeChild(textArea);
+    });
+}
 
 function openCreateInstanceModal() {
     document.getElementById('createInstanceModal').classList.remove('hidden');
