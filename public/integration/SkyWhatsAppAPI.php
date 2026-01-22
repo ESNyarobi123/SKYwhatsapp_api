@@ -15,6 +15,7 @@ class SkyWhatsAppAPI
     private string $apiKey;
     private int $instanceId;
     private int $timeout = 30;
+    private array $extraHeaders = [];
     private ?string $lastError = null;
     private ?array $lastResponse = null;
 
@@ -31,6 +32,19 @@ class SkyWhatsAppAPI
         $this->apiUrl = rtrim($apiUrl, '/');
         $this->apiKey = $apiKey;
         $this->instanceId = $instanceId;
+    }
+
+    /**
+     * Add Custom Header
+     * 
+     * @param string $key Header name (e.g., 'Host')
+     * @param string $value Header value (e.g., 'example.com')
+     * @return self
+     */
+    public function addHeader(string $key, string $value): self
+    {
+        $this->extraHeaders[$key] = $value;
+        return $this;
     }
 
     /**
@@ -217,12 +231,12 @@ class SkyWhatsAppAPI
         $ch = curl_init();
 
         // IMPORTANT HEADERS - Hizi ndizo zinazosababisha 404 ikiwa hazipo!
-        $headers = [
+        $headers = array_merge([
             'Authorization: Bearer ' . $this->apiKey,  // API Key
             'Content-Type: application/json',           // MUHIMU!
             'Accept: application/json',                 // MUHIMU SANA! Bila hii, utapata 404
             'X-Requested-With: XMLHttpRequest',         // Optional lakini husaidia
-        ];
+        ], $this->buildHeaders());
 
         // cURL Options
         curl_setopt_array($ch, [
@@ -316,5 +330,17 @@ class SkyWhatsAppAPI
             500 => 'Server Error - Tatizo la server, jaribu tena',
             default => "HTTP Error {$httpCode}",
         };
+    }
+
+    /**
+     * Build Headers Array
+     */
+    private function buildHeaders(): array
+    {
+        $headers = [];
+        foreach ($this->extraHeaders as $key => $value) {
+            $headers[] = "{$key}: {$value}";
+        }
+        return $headers;
     }
 }
