@@ -12,6 +12,17 @@ $messagingOpen = collect($messagingRoutes)->contains(fn($r) => str_starts_with($
 $automationOpen = collect($automationRoutes)->contains(fn($r) => str_starts_with($currentRoute, str_replace('.index', '', $r)));
 $developerOpen = collect($developerRoutes)->contains(fn($r) => str_starts_with($currentRoute, str_replace('.index', '', $r)));
 $accountOpen = collect($accountRoutes)->contains(fn($r) => str_starts_with($currentRoute, str_replace('.index', '', $r)));
+
+// Admin Groups
+$adminUserRoutes = ['admin.users', 'admin.packages', 'admin.subscriptions'];
+$adminSystemRoutes = ['admin.instances', 'admin.api-keys', 'admin.activity'];
+$adminFinanceRoutes = ['admin.revenue'];
+$adminSupportRoutes = ['admin.notifications', 'admin.support'];
+
+$adminUserOpen = collect($adminUserRoutes)->contains(fn($r) => str_starts_with($currentRoute, $r));
+$adminSystemOpen = collect($adminSystemRoutes)->contains(fn($r) => str_starts_with($currentRoute, $r));
+$adminFinanceOpen = collect($adminFinanceRoutes)->contains(fn($r) => str_starts_with($currentRoute, $r));
+$adminSupportOpen = collect($adminSupportRoutes)->contains(fn($r) => str_starts_with($currentRoute, $r));
 @endphp
 
 <!-- Mobile Overlay Backdrop -->
@@ -27,13 +38,124 @@ $accountOpen = collect($accountRoutes)->contains(fn($r) => str_starts_with($curr
         <nav class="space-y-1">
             @if($isAdmin)
                 {{-- Admin menu stays the same --}}
-                <a href="{{ route('admin.dashboard') }}" class="group sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {{ str_starts_with($currentRoute, 'admin.') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/70 hover:bg-white/5 hover:text-white' }}" title="Dashboard">
+                <a href="{{ route('admin.dashboard') }}" class="group sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {{ $currentRoute === 'admin.dashboard' ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/70 hover:bg-white/5 hover:text-white' }}" title="Dashboard">
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                     <span class="sidebar-label">Admin Dashboard</span>
                 </a>
-                {{-- Add other admin items here if needed --}}
+
+                {{-- User Management Group --}}
+                <div class="sidebar-group" x-data="{ open: {{ $adminUserOpen ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="w-full group flex items-center justify-between px-4 py-3 rounded-lg transition-colors text-white/70 hover:bg-white/5 hover:text-white">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <span class="sidebar-label font-medium">User Management</span>
+                        </div>
+                        <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div x-show="open" x-collapse class="pl-4 space-y-1 mt-1">
+                        <a href="{{ route('admin.users.index') }}" class="group flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-sm {{ str_starts_with($currentRoute, 'admin.users') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ str_starts_with($currentRoute, 'admin.users') ? 'bg-[#FCD535]' : 'bg-white/30' }}"></span>
+                            <span>Users</span>
+                        </a>
+                        <a href="{{ route('admin.packages.index') }}" class="group flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-sm {{ str_starts_with($currentRoute, 'admin.packages') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ str_starts_with($currentRoute, 'admin.packages') ? 'bg-[#FCD535]' : 'bg-white/30' }}"></span>
+                            <span>Packages</span>
+                        </a>
+                        <a href="{{ route('admin.subscriptions.index') }}" class="group flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-sm {{ str_starts_with($currentRoute, 'admin.subscriptions') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ str_starts_with($currentRoute, 'admin.subscriptions') ? 'bg-[#FCD535]' : 'bg-white/30' }}"></span>
+                            <span>Subscriptions</span>
+                        </a>
+                    </div>
+                </div>
+
+                {{-- System Group --}}
+                <div class="sidebar-group" x-data="{ open: {{ $adminSystemOpen ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="w-full group flex items-center justify-between px-4 py-3 rounded-lg transition-colors text-white/70 hover:bg-white/5 hover:text-white">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                            </svg>
+                            <span class="sidebar-label font-medium">System</span>
+                        </div>
+                        <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div x-show="open" x-collapse class="pl-4 space-y-1 mt-1">
+                        <a href="{{ route('admin.instances.index') }}" class="group flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-sm {{ str_starts_with($currentRoute, 'admin.instances') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ str_starts_with($currentRoute, 'admin.instances') ? 'bg-[#FCD535]' : 'bg-white/30' }}"></span>
+                            <span>Instances</span>
+                        </a>
+                        <a href="{{ route('admin.api-keys.index') }}" class="group flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-sm {{ str_starts_with($currentRoute, 'admin.api-keys') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ str_starts_with($currentRoute, 'admin.api-keys') ? 'bg-[#FCD535]' : 'bg-white/30' }}"></span>
+                            <span>API Keys</span>
+                        </a>
+                        <a href="{{ route('admin.activity.index') }}" class="group flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-sm {{ str_starts_with($currentRoute, 'admin.activity') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ str_starts_with($currentRoute, 'admin.activity') ? 'bg-[#FCD535]' : 'bg-white/30' }}"></span>
+                            <span>Activity Logs</span>
+                        </a>
+                    </div>
+                </div>
+
+                {{-- Finance Group --}}
+                <div class="sidebar-group" x-data="{ open: {{ $adminFinanceOpen ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="w-full group flex items-center justify-between px-4 py-3 rounded-lg transition-colors text-white/70 hover:bg-white/5 hover:text-white">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="sidebar-label font-medium">Finance</span>
+                        </div>
+                        <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div x-show="open" x-collapse class="pl-4 space-y-1 mt-1">
+                        <a href="{{ route('admin.revenue.index') }}" class="group flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-sm {{ str_starts_with($currentRoute, 'admin.revenue') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ str_starts_with($currentRoute, 'admin.revenue') ? 'bg-[#FCD535]' : 'bg-white/30' }}"></span>
+                            <span>Revenue</span>
+                        </a>
+                    </div>
+                </div>
+
+                {{-- Support Group --}}
+                <div class="sidebar-group" x-data="{ open: {{ $adminSupportOpen ? 'true' : 'false' }} }">
+                    <button @click="open = !open" class="w-full group flex items-center justify-between px-4 py-3 rounded-lg transition-colors text-white/70 hover:bg-white/5 hover:text-white">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <span class="sidebar-label font-medium">Support</span>
+                        </div>
+                        <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div x-show="open" x-collapse class="pl-4 space-y-1 mt-1">
+                        <a href="{{ route('admin.notifications.index') }}" class="group flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-sm {{ str_starts_with($currentRoute, 'admin.notifications') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ str_starts_with($currentRoute, 'admin.notifications') ? 'bg-[#FCD535]' : 'bg-white/30' }}"></span>
+                            <span>Notifications</span>
+                        </a>
+                        <a href="{{ route('admin.support.index') }}" class="group flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-sm {{ str_starts_with($currentRoute, 'admin.support') ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/60 hover:bg-white/5 hover:text-white' }}">
+                            <span class="w-1.5 h-1.5 rounded-full {{ str_starts_with($currentRoute, 'admin.support') ? 'bg-[#FCD535]' : 'bg-white/30' }}"></span>
+                            <span>Support Tickets</span>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="{{ route('admin.settings') }}" class="group sidebar-item flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors {{ $currentRoute === 'admin.settings' ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/70 hover:bg-white/5 hover:text-white' }}" title="Settings">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span class="sidebar-label">Settings</span>
+                </a>
             @else
                 {{-- Dashboard --}}
                 <a href="{{ route('dashboard') }}" class="group flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors sidebar-item {{ $currentRoute === 'dashboard' ? 'bg-[#FCD535]/10 text-[#FCD535]' : 'text-white/70 hover:bg-white/5 hover:text-white' }}" title="Dashboard">
