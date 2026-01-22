@@ -247,6 +247,7 @@ class SkyWhatsAppAPI
             CURLOPT_SSL_VERIFYPEER => false,            // Disable SSL verification (Fix for self-signed/mismatched certs)
             CURLOPT_SSL_VERIFYHOST => 0,                // Disable Host verification
             CURLOPT_FOLLOWLOCATION => true,             // Follow redirects
+            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,     // Force IPv4
         ]);
 
         // Set method and data

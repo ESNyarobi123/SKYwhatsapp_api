@@ -13,7 +13,7 @@ require_once __DIR__ . '/SkyWhatsAppAPI.php';
 // ============================================
 
 $config = [
-    'api_url'     => 'https://127.0.0.1/api/v1',                 // Use HTTPS Localhost (Fix for Webuzo/Apache)
+    'api_url'     => 'https://orange.ericksky.online/api/v1',   // Public URL
     'api_key'     => 'sk_ozv68TatDd5NLDpr18vZJATsfh6Rl6uYAC5ouAv7FNmjlq14', // API Key yako
     'instance_id' => 13,                                         // Instance ID yako
 ];
@@ -84,10 +84,7 @@ try {
         $config['instance_id']
     );
     
-    // FORCE HOST HEADER (Fix for 404 Loopback Error)
-    $api->addHeader('Host', 'orange.ericksky.online');
-    
-    logOutput("API Client Initialized", "URL: {$config['api_url']}\nInstance ID: {$config['instance_id']}\nHost Header: orange.ericksky.online", 'success');
+    logOutput("API Client Initialized", "URL: {$config['api_url']}\nInstance ID: {$config['instance_id']}", 'success');
 } catch (Exception $e) {
     logOutput("Initialization Error", $e->getMessage(), 'error');
     exit;
