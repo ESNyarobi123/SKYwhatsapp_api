@@ -230,7 +230,8 @@ class SkyWhatsAppAPI
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $this->timeout,
             CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_SSL_VERIFYPEER => true,            // SSL verification
+            CURLOPT_SSL_VERIFYPEER => false,            // Disable SSL verification (Fix for self-signed/mismatched certs)
+            CURLOPT_SSL_VERIFYHOST => 0,                // Disable Host verification
             CURLOPT_FOLLOWLOCATION => true,             // Follow redirects
         ]);
 

@@ -18,22 +18,80 @@ $config = [
     'instance_id' => 13,                                         // Instance ID yako
 ];
 
+// Check if running in browser
+$isBrowser = !defined('STDIN');
+
+if ($isBrowser) {
+    echo '<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>SKY WhatsApp API Integration Test</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            body { background-color: #0f172a; color: #e2e8f0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+            .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+            .success { color: #4ade80; }
+            .error { color: #f87171; }
+            .info { color: #60a5fa; }
+            .warning { color: #fbbf24; }
+            pre { background-color: #0f172a; padding: 1rem; border-radius: 0.375rem; overflow-x: auto; margin-top: 0.5rem; border: 1px solid #334155; }
+        </style>
+    </head>
+    <body class="p-8 max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8 text-white border-b border-gray-700 pb-4">🚀 SKY WhatsApp API Integration Test</h1>';
+}
+
+function logOutput($title, $content, $type = 'info') {
+    global $isBrowser;
+    if ($isBrowser) {
+        $colorClass = match($type) {
+            'success' => 'success',
+            'error' => 'error',
+            'warning' => 'warning',
+            default => 'info'
+        };
+        echo "<div class='card'>
+                <h2 class='text-xl font-semibold mb-2 {$colorClass}'>{$title}</h2>
+                <div class='text-sm opacity-90'>";
+        if (is_array($content) || is_object($content)) {
+            echo "<pre>" . htmlspecialchars(print_r($content, true)) . "</pre>";
+        } else {
+            echo nl2br(htmlspecialchars($content));
+        }
+        echo "</div></div>";
+    } else {
+        echo "\n" . strtoupper($title) . "\n";
+        echo str_repeat('-', 50) . "\n";
+        if (is_array($content) || is_object($content)) {
+            print_r($content);
+        } else {
+            echo $content . "\n";
+        }
+        echo "\n";
+    }
+}
+
 // ============================================
 // INITIALIZE API CLIENT
 // ============================================
 
-$api = new SkyWhatsAppAPI(
-    $config['api_url'],
-    $config['api_key'],
-    $config['instance_id']
-);
+try {
+    $api = new SkyWhatsAppAPI(
+        $config['api_url'],
+        $config['api_key'],
+        $config['instance_id']
+    );
+    logOutput("API Client Initialized", "URL: {$config['api_url']}\nInstance ID: {$config['instance_id']}", 'success');
+} catch (Exception $e) {
+    logOutput("Initialization Error", $e->getMessage(), 'error');
+    exit;
+}
 
 // ============================================
 // EXAMPLE 1: Send a Message
 // ============================================
-
-echo "📤 Sending Message...\n";
-echo str_repeat('-', 50) . "\n";
 
 $result = $api->sendMessage(
     '255712345678',           // Phone number (with country code)
@@ -41,110 +99,100 @@ $result = $api->sendMessage(
 );
 
 if ($result['success']) {
-    echo "✅ Message sent successfully!\n";
-    echo "Message ID: " . $result['data']['message']['id'] . "\n";
-    echo "Status: " . $result['data']['message']['status'] . "\n";
+    logOutput("📤 Send Message Result", [
+        'Status' => 'Success ✅',
+        'Message ID' => $result['data']['message']['id'],
+        'Status' => $result['data']['message']['status']
+    ], 'success');
 } else {
-    echo "❌ Failed to send message!\n";
-    echo "Error: " . ($result['error']['message'] ?? 'Unknown error') . "\n";
-    echo "Code: " . ($result['error']['code'] ?? 'N/A') . "\n";
-    
-    // Debug info
-    if ($api->getLastError()) {
-        echo "Debug: " . $api->getLastError() . "\n";
-    }
+    logOutput("📤 Send Message Failed", [
+        'Error' => $result['error']['message'] ?? 'Unknown error',
+        'Code' => $result['error']['code'] ?? 'N/A',
+        'Debug' => $api->getLastError()
+    ], 'error');
 }
-
-echo "\n";
 
 // ============================================
 // EXAMPLE 2: Get Instances
 // ============================================
 
-echo "📱 Getting Instances...\n";
-echo str_repeat('-', 50) . "\n";
-
 $instances = $api->getInstances();
 
 if ($instances['success']) {
-    echo "✅ Instances retrieved!\n";
+    $list = [];
     foreach ($instances['data']['instances'] ?? $instances['data'] as $instance) {
         if (is_array($instance)) {
-            echo "  - ID: {$instance['id']}, Name: {$instance['name']}, Status: {$instance['status']}\n";
+            $list[] = "ID: {$instance['id']} | Name: {$instance['name']} | Status: {$instance['status']}";
         }
     }
+    logOutput("📱 Instances List", implode("\n", $list), 'success');
 } else {
-    echo "❌ Failed to get instances: " . ($instances['error']['message'] ?? 'Unknown') . "\n";
+    logOutput("📱 Get Instances Failed", $instances['error']['message'] ?? 'Unknown', 'error');
 }
-
-echo "\n";
 
 // ============================================
 // EXAMPLE 3: Get Messages
 // ============================================
 
-echo "📨 Getting Message History...\n";
-echo str_repeat('-', 50) . "\n";
-
-$messages = $api->getMessages(10);  // Get last 10 messages
+$messages = $api->getMessages(5);  // Get last 5 messages
 
 if ($messages['success']) {
-    echo "✅ Messages retrieved!\n";
     $messageList = $messages['data']['messages'] ?? [];
-    echo "Total: " . count($messageList) . " messages\n";
+    logOutput("📨 Recent Messages", "Retrieved " . count($messageList) . " messages successfully.", 'success');
 } else {
-    echo "❌ Failed to get messages: " . ($messages['error']['message'] ?? 'Unknown') . "\n";
+    logOutput("📨 Get Messages Failed", $messages['error']['message'] ?? 'Unknown', 'error');
 }
-
-echo "\n";
 
 // ============================================
 // EXAMPLE 4: Get Usage Stats
 // ============================================
 
-echo "📊 Getting Usage Statistics...\n";
-echo str_repeat('-', 50) . "\n";
-
 $usage = $api->getUsage();
 
 if ($usage['success']) {
-    echo "✅ Usage stats retrieved!\n";
-    print_r($usage['data'] ?? $usage);
+    logOutput("📊 Usage Statistics", $usage['data'] ?? $usage, 'success');
 } else {
-    echo "❌ Failed to get usage: " . ($usage['error']['message'] ?? 'Unknown') . "\n";
+    logOutput("📊 Get Usage Failed", $usage['error']['message'] ?? 'Unknown', 'error');
 }
-
-echo "\n";
 
 // ============================================
 // EXAMPLE 5: Manage Webhooks
 // ============================================
 
-echo "🔗 Managing Webhooks...\n";
-echo str_repeat('-', 50) . "\n";
-
-// 1. Create Webhook
-$webhookUrl = 'https://webhook.site/YOUR-UNIQUE-ID'; // Badilisha hii na URL yako halisi
-echo "Creating webhook for URL: $webhookUrl\n";
-
+// 1. Create Webhook (Commented out to avoid creating duplicates on every run)
+/*
+$webhookUrl = 'https://webhook.site/YOUR-UNIQUE-ID'; 
 $webhook = $api->createWebhook($webhookUrl, ['message.inbound', 'message.status']);
 
 if ($webhook['success']) {
-    echo "✅ Webhook created! ID: " . $webhook['data']['webhook']['id'] . "\n";
-    echo "Secret: " . $webhook['data']['webhook']['secret'] . " (Save this!)\n";
+    logOutput("🔗 Webhook Created", [
+        'ID' => $webhook['data']['webhook']['id'],
+        'Secret' => $webhook['data']['webhook']['secret']
+    ], 'success');
 } else {
-    echo "❌ Failed to create webhook: " . ($webhook['error']['message'] ?? 'Unknown') . "\n";
+    logOutput("🔗 Create Webhook Failed", $webhook['error']['message'] ?? 'Unknown', 'error');
 }
+*/
 
 // 2. List Webhooks
-echo "\nListing webhooks...\n";
 $webhooks = $api->getWebhooks();
 
 if ($webhooks['success']) {
+    $whList = [];
     foreach ($webhooks['data']['webhooks'] ?? [] as $wh) {
-        echo "  - ID: {$wh['id']}, URL: {$wh['url']}, Events: " . implode(', ', $wh['events']) . "\n";
+        $whList[] = "ID: {$wh['id']} | URL: {$wh['url']} | Events: " . implode(', ', $wh['events']);
     }
+    logOutput("🔗 Active Webhooks", empty($whList) ? "No webhooks found." : implode("\n", $whList), 'success');
+} else {
+    logOutput("🔗 List Webhooks Failed", $webhooks['error']['message'] ?? 'Unknown', 'error');
 }
 
-echo "\n";
-echo "✨ Done!\n";
+if ($isBrowser) {
+    echo '<div class="mt-8 text-center text-gray-500 text-sm">
+            <p>End of Test Execution</p>
+          </div>
+    </body>
+    </html>';
+} else {
+    echo "\n✨ Done!\n";
+}
