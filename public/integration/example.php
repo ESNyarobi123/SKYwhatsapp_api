@@ -13,7 +13,7 @@ require_once __DIR__ . '/SkyWhatsAppAPI.php';
 // ============================================
 
 $config = [
-    'api_url'     => 'http://127.0.0.1/api/v1',                  // Use Localhost to avoid DNS issues
+    'api_url'     => 'https://orange.ericksky.online',                  // Use Localhost to avoid DNS issues
     'api_key'     => 'sk_ozv68TatDd5NLDpr18vZJATsfh6Rl6uYAC5ouAv7FNmjlq14', // API Key yako
     'instance_id' => 13,                                         // Instance ID yako
 ];
