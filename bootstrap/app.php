@@ -22,6 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'rate.limit' => \App\Http\Middleware\CheckRateLimit::class,
             'admin' => \App\Http\Middleware\CheckAdmin::class,
         ]);
+
+        // Disable CSRF for API routes
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+            'api/v1/*',
+            'payments/webhook/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
