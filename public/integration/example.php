@@ -108,7 +108,8 @@ if ($result['success']) {
     logOutput("📤 Send Message Failed", [
         'Error' => $result['error']['message'] ?? 'Unknown error',
         'Code' => $result['error']['code'] ?? 'N/A',
-        'Debug' => $api->getLastError()
+        'Debug' => $api->getLastError(),
+        'Raw Response' => htmlspecialchars(substr($result['raw_response'] ?? '', 0, 500)) // Show first 500 chars
     ], 'error');
 }
 

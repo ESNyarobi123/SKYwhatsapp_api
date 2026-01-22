@@ -286,6 +286,7 @@ class SkyWhatsAppAPI
                     'message' => $errorMessage,
                 ],
                 'http_code' => $httpCode,
+                'raw_response' => $response, // Debugging: Show raw response
             ];
         }
 
