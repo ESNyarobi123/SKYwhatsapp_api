@@ -59,6 +59,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Handle Clear Debug
+if (isset($_POST['clear_debug'])) {
+    $debugFile = __DIR__ . '/webhook_debug.txt';
+    if (file_exists($debugFile)) {
+        file_put_contents($debugFile, '');
+    }
+    // Redirect to avoid resubmission
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit;
+}
+
 // Read Messages
 $messages = [];
 if (file_exists($logFile)) {
@@ -207,6 +218,24 @@ $incomingMessages = array_filter($messages, fn($m) => isset($m['type']) && $m['t
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+        </div>
+
+        <!-- DEBUG SECTION -->
+        <div class="p-4 border-t border-gray-700 bg-[#0f172a]">
+            <h4 class="text-[10px] font-bold text-gray-500 uppercase mb-2">Webhook Debug Log (Last 500 chars)</h4>
+            <pre class="text-[9px] text-green-400 font-mono bg-black p-2 rounded overflow-x-auto h-32 whitespace-pre-wrap"><?php 
+                $debugFile = __DIR__ . '/webhook_debug.txt';
+                if (file_exists($debugFile)) {
+                    $content = file_get_contents($debugFile);
+                    echo htmlspecialchars(substr($content, -1000)); // Show last 1000 chars
+                } else {
+                    echo "No debug log found yet. Waiting for requests...";
+                }
+            ?></pre>
+            <form method="POST" action="" class="mt-2">
+                <input type="hidden" name="clear_debug" value="1">
+                <button type="submit" class="text-[9px] text-red-400 hover:text-red-300 underline">Clear Logs</button>
+            </form>
         </div>
     </div>
 
