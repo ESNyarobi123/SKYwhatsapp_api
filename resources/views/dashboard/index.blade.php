@@ -80,7 +80,7 @@
     @endif
 
     <!-- Modern Hero Header -->
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#00D9A5] via-[#10B981] to-[#059669] p-8 shadow-2xl">
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#00D9A5] via-[#10B981] to-[#059669] p-8 shadow-2xl mb-8">
         <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyMCIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
         <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
         <div class="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
@@ -88,28 +88,59 @@
         <div class="relative z-10">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div>
-                    <p class="text-white/80 text-sm uppercase tracking-wider mb-2">Welcome back</p>
+                    @php
+                        $hour = date('H');
+                        $greeting = 'Good Morning';
+                        if ($hour >= 12 && $hour < 17) {
+                            $greeting = 'Good Afternoon';
+                        } elseif ($hour >= 17) {
+                            $greeting = 'Good Evening';
+                        }
+                    @endphp
+                    <p class="text-white/80 text-sm uppercase tracking-wider mb-2">{{ $greeting }}</p>
                     <h1 class="text-4xl md:text-5xl font-bold text-white mb-3">{{ $user->name }} 👋</h1>
                     <p class="text-white/90 text-lg max-w-lg">Your WhatsApp API control center. Manage instances, monitor messages, and grow your business.</p>
                 </div>
                 
-                @if($hasActiveSubscription)
-                    <div class="bg-white/15 backdrop-blur-sm border border-white/30 rounded-2xl p-5 min-w-[200px]">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                            <span class="text-white/80 text-sm font-medium">Active Plan</span>
+                <div class="flex flex-col gap-4">
+                    @if($hasActiveSubscription)
+                        <div class="bg-white/15 backdrop-blur-sm border border-white/30 rounded-2xl p-5 min-w-[200px]">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                                <span class="text-white/80 text-sm font-medium">Active Plan</span>
+                            </div>
+                            <p class="text-white text-2xl font-bold mb-1">{{ $currentPackage->name ?? 'Pro Plan' }}</p>
+                            @php
+                                $daysRemaining = floor(now()->diffInDays($activeSubscription->expires_at, false));
+                            @endphp
+                            @if($daysRemaining > 0)
+                                <p class="text-white/70 text-sm">{{ $daysRemaining }} days remaining</p>
+                            @else
+                                <p class="text-[#FCD535] text-sm font-medium">Expires soon!</p>
+                            @endif
                         </div>
-                        <p class="text-white text-2xl font-bold mb-1">{{ $currentPackage->name ?? 'Pro Plan' }}</p>
-                        @php
-                            $daysRemaining = floor(now()->diffInDays($activeSubscription->expires_at, false));
-                        @endphp
-                        @if($daysRemaining > 0)
-                            <p class="text-white/70 text-sm">{{ $daysRemaining }} days remaining</p>
-                        @else
-                            <p class="text-[#FCD535] text-sm font-medium">Expires soon!</p>
-                        @endif
+                    @endif
+
+                    <!-- Connection Health Widget -->
+                    @php
+                        $connectedInstances = $targetUser->instances()->where('status', 'connected')->count();
+                        $totalInstances = $targetUser->instances()->count();
+                        $healthColor = $connectedInstances > 0 ? '#10B981' : ($totalInstances > 0 ? '#EF4444' : '#6B7280');
+                        $healthText = $connectedInstances > 0 ? 'System Healthy' : ($totalInstances > 0 ? 'Action Needed' : 'No Instances');
+                    @endphp
+                    <div class="bg-black/20 backdrop-blur-sm border border-white/10 rounded-2xl p-4 flex items-center gap-4 min-w-[200px]">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background: {{ $healthColor }}20">
+                            <svg class="w-6 h-6" style="color: {{ $healthColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-white/60 text-xs uppercase tracking-wider">System Status</p>
+                            <p class="text-white font-bold">{{ $healthText }}</p>
+                            <p class="text-white/50 text-xs">{{ $connectedInstances }} / {{ $totalInstances }} Connected</p>
+                        </div>
                     </div>
-                @endif
+                </div>
             </div>
         </div>
     </div>
@@ -163,59 +194,104 @@
         @endforeach
     </div>
 
-    <!-- Quick Actions with Icons -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <a href="{{ route('dashboard.instances') }}" class="group relative overflow-hidden bg-gradient-to-br from-[#3B82F6]/20 to-[#3B82F6]/5 border border-[#3B82F6]/30 rounded-2xl p-6 hover:border-[#3B82F6]/60 transition-all duration-300">
-            <div class="absolute top-0 right-0 w-20 h-20 bg-[#3B82F6]/20 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
-            <div class="relative z-10">
-                <div class="w-14 h-14 bg-[#3B82F6]/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <svg class="w-7 h-7 text-[#3B82F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
+    </div>
+    
+    <!-- Recent Activity & Quick Actions Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Quick Actions (Takes up 2 columns) -->
+        <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a href="{{ route('dashboard.instances') }}" class="group relative overflow-hidden bg-gradient-to-br from-[#3B82F6]/20 to-[#3B82F6]/5 border border-[#3B82F6]/30 rounded-2xl p-6 hover:border-[#3B82F6]/60 transition-all duration-300">
+                <div class="absolute top-0 right-0 w-20 h-20 bg-[#3B82F6]/20 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+                <div class="relative z-10">
+                    <div class="w-14 h-14 bg-[#3B82F6]/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-[#3B82F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    </div>
+                    <h3 class="text-white font-bold text-lg mb-1">Create Instance</h3>
+                    <p class="text-white/60 text-sm">Launch a new WhatsApp connection</p>
                 </div>
-                <h3 class="text-white font-bold text-lg mb-1">Create Instance</h3>
-                <p class="text-white/60 text-sm">Launch a new WhatsApp connection</p>
-            </div>
-        </a>
-        
-        <a href="{{ route('dashboard.api-keys') }}" class="group relative overflow-hidden bg-gradient-to-br from-[#8B5CF6]/20 to-[#8B5CF6]/5 border border-[#8B5CF6]/30 rounded-2xl p-6 hover:border-[#8B5CF6]/60 transition-all duration-300">
-            <div class="absolute top-0 right-0 w-20 h-20 bg-[#8B5CF6]/20 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
-            <div class="relative z-10">
-                <div class="w-14 h-14 bg-[#8B5CF6]/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <svg class="w-7 h-7 text-[#8B5CF6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                    </svg>
+            </a>
+            
+            <a href="{{ route('dashboard.api-keys') }}" class="group relative overflow-hidden bg-gradient-to-br from-[#8B5CF6]/20 to-[#8B5CF6]/5 border border-[#8B5CF6]/30 rounded-2xl p-6 hover:border-[#8B5CF6]/60 transition-all duration-300">
+                <div class="absolute top-0 right-0 w-20 h-20 bg-[#8B5CF6]/20 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+                <div class="relative z-10">
+                    <div class="w-14 h-14 bg-[#8B5CF6]/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-[#8B5CF6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-white font-bold text-lg mb-1">Generate API Key</h3>
+                    <p class="text-white/60 text-sm">Create secure authentication</p>
                 </div>
-                <h3 class="text-white font-bold text-lg mb-1">Generate API Key</h3>
-                <p class="text-white/60 text-sm">Create secure authentication</p>
-            </div>
-        </a>
-        
-        <a href="{{ route('dashboard.bot.index') }}" class="group relative overflow-hidden bg-gradient-to-br from-[#F59E0B]/20 to-[#F59E0B]/5 border border-[#F59E0B]/30 rounded-2xl p-6 hover:border-[#F59E0B]/60 transition-all duration-300">
-            <div class="absolute top-0 right-0 w-20 h-20 bg-[#F59E0B]/20 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
-            <div class="relative z-10">
-                <div class="w-14 h-14 bg-[#F59E0B]/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <svg class="w-7 h-7 text-[#F59E0B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
+            </a>
+            
+            <a href="{{ route('dashboard.bot.index') }}" class="group relative overflow-hidden bg-gradient-to-br from-[#F59E0B]/20 to-[#F59E0B]/5 border border-[#F59E0B]/30 rounded-2xl p-6 hover:border-[#F59E0B]/60 transition-all duration-300">
+                <div class="absolute top-0 right-0 w-20 h-20 bg-[#F59E0B]/20 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+                <div class="relative z-10">
+                    <div class="w-14 h-14 bg-[#F59E0B]/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-[#F59E0B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-white font-bold text-lg mb-1">Bot Builder</h3>
+                    <p class="text-white/60 text-sm">Create auto-reply rules</p>
                 </div>
-                <h3 class="text-white font-bold text-lg mb-1">Bot Builder</h3>
-                <p class="text-white/60 text-sm">Create auto-reply rules</p>
-            </div>
-        </a>
-        
-        <a href="{{ route('dashboard.usage') }}" class="group relative overflow-hidden bg-gradient-to-br from-[#06B6D4]/20 to-[#06B6D4]/5 border border-[#06B6D4]/30 rounded-2xl p-6 hover:border-[#06B6D4]/60 transition-all duration-300">
-            <div class="absolute top-0 right-0 w-20 h-20 bg-[#06B6D4]/20 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
-            <div class="relative z-10">
-                <div class="w-14 h-14 bg-[#06B6D4]/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <svg class="w-7 h-7 text-[#06B6D4]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
+            </a>
+            
+            <a href="{{ route('dashboard.usage') }}" class="group relative overflow-hidden bg-gradient-to-br from-[#06B6D4]/20 to-[#06B6D4]/5 border border-[#06B6D4]/30 rounded-2xl p-6 hover:border-[#06B6D4]/60 transition-all duration-300">
+                <div class="absolute top-0 right-0 w-20 h-20 bg-[#06B6D4]/20 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+                <div class="relative z-10">
+                    <div class="w-14 h-14 bg-[#06B6D4]/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-[#06B6D4]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-white font-bold text-lg mb-1">View Analytics</h3>
+                    <p class="text-white/60 text-sm">Track usage & performance</p>
                 </div>
-                <h3 class="text-white font-bold text-lg mb-1">View Analytics</h3>
-                <p class="text-white/60 text-sm">Track usage & performance</p>
+            </a>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="bg-[#252525] border border-white/10 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-white font-bold text-lg">Recent Activity</h3>
+                <a href="{{ route('dashboard.messages') }}" class="text-sm text-[#00D9A5] hover:text-[#00D9A5]/80 transition-colors">View All</a>
             </div>
-        </a>
+            
+            @php
+                $recentMessages = $targetUser->messages()->latest()->take(5)->get();
+            @endphp
+            
+            @if($recentMessages->count() > 0)
+                <div class="space-y-4">
+                    @foreach($recentMessages as $msg)
+                        <div class="flex items-start gap-3 group">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 {{ $msg->direction === 'outbound' ? 'bg-[#3B82F6]/20 text-[#3B82F6]' : 'bg-[#10B981]/20 text-[#10B981]' }}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $msg->direction === 'outbound' ? 'M5 10l7-7m0 0l7 7m-7-7v18' : 'M19 14l-7 7m0 0l-7-7m7 7V3' }}" />
+                                </svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-white text-sm truncate">{{ $msg->to }}</p>
+                                <p class="text-white/50 text-xs truncate">{{ Str::limit($msg->body ?? 'Media message', 30) }}</p>
+                            </div>
+                            <span class="text-white/40 text-xs whitespace-nowrap">{{ $msg->created_at->diffForHumans(null, true, true) }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="text-center py-8">
+                    <div class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-6 h-6 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <p class="text-white/50 text-sm">No recent activity</p>
+                </div>
+            @endif
+        </div>
     </div>
 
     @if(!$hasActiveSubscription && isset($packages) && $packages && count($packages) > 0)
