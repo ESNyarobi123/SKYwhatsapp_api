@@ -15,27 +15,27 @@ class ActivityController extends Controller
     {
         $query = UsageLog::with(['user', 'apiKey']);
 
-        if ($request->has('user_id')) {
+        if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
 
-        if ($request->has('endpoint')) {
+        if ($request->filled('endpoint')) {
             $query->where('endpoint', 'like', '%'.$request->endpoint.'%');
         }
 
-        if ($request->has('method')) {
+        if ($request->filled('method')) {
             $query->where('method', $request->method);
         }
 
-        if ($request->has('status_code')) {
+        if ($request->filled('status_code')) {
             $query->where('status_code', $request->status_code);
         }
 
-        if ($request->has('date_from')) {
+        if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
 
-        if ($request->has('date_to')) {
+        if ($request->filled('date_to')) {
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
