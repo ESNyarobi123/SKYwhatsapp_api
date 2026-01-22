@@ -46,6 +46,18 @@ class SendWebhook implements ShouldQueue
         $payloadJson = json_encode($payload);
         $signature = $webhookService->generateSignature($payloadJson, $this->webhook->secret);
 
+        // Create Pending Log
+        $log = \App\Models\WebhookLog::create([
+            'webhook_id' => $this->webhook->id,
+            'user_id' => $this->webhook->user_id,
+            'event_type' => $this->event,
+            'payload' => $payload,
+            'status' => 'pending',
+            'retry_count' => $this->attempts() - 1,
+        ]);
+
+        $startTime = microtime(true);
+
         try {
             $response = Http::timeout(10)
                 ->withOptions([
@@ -62,10 +74,17 @@ class SendWebhook implements ShouldQueue
                 ])
                 ->post($this->webhook->url, $payload);
 
-            if (! $response->successful()) {
+            $duration = round((microtime(true) - $startTime) * 1000);
+
+            if ($response->successful()) {
+                $log->markAsSuccess($response->status(), $response->json() ?? [], $duration);
+            } else {
+                $log->markAsFailed("HTTP Status: " . $response->status(), $response->status());
                 throw new \Exception("Webhook request failed with status: {$response->status()}");
             }
         } catch (\Exception $e) {
+            $log->markAsFailed($e->getMessage());
+
             Log::warning('Webhook delivery failed', [
                 'webhook_id' => $this->webhook->id,
                 'url' => $this->webhook->url,
