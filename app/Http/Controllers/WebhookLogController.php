@@ -98,6 +98,9 @@ class WebhookLogController extends Controller
     /**
      * Get log details as JSON (for modal).
      */
+    /**
+     * Get log details as JSON (for modal).
+     */
     public function details(WebhookLog $webhookLog)
     {
         // Ensure user owns the log
